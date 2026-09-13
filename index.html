@@ -294,7 +294,7 @@ body.is-admin #btnTplSel{display:inline-block}
 .hsteps input{width:100%;min-width:0;padding:4px 3px;appearance:textfield;-moz-appearance:textfield}
 .hsteps input::-webkit-inner-spin-button,.hsteps input::-webkit-outer-spin-button{display:none;margin:0}
 .num-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:7px}
-.num-grid label{font-size:11px;color:var(--ink2);display:flex;align-items:center;gap:3px}
+.num-grid label{font-size:11px;color:var(--ink2);display:flex;align-items:center;gap:3px;min-width:0;overflow:hidden;white-space:nowrap}
 .num-grid input{width:100%;min-width:0;padding:4px 5px}
 .ed-ph .ph-img{width:100%;height:100%;display:block}
 .shadow-sec{background:#f8f9fd;border:1px solid var(--line);border-radius:9px;padding:9px;margin:9px 0}
@@ -327,6 +327,7 @@ body.is-admin #btnTplSel{display:inline-block}
 .zcnt{opacity:.55;font-size:10px;margin-left:2px}
 .empty-zone{grid-column:1/-1;text-align:center;color:var(--ink3);font-size:12px;padding:26px 12px;border:1.5px dashed #d6daf0;border-radius:11px;background:#fbfbff;line-height:1.8}
 .badge-preset{position:absolute;left:4px;bottom:22px;background:#8b8fa8;color:#fff;font-size:9px;padding:1px 5px;border-radius:5px;z-index:2}
+.badge-offline{position:absolute;left:4px;bottom:38px;background:#f5a623;color:#fff;font-size:9px;padding:1px 5px;border-radius:5px;z-index:2}
 .tpl-card.pinned .tpl-name::before{content:"📌 ";font-size:9px}
 
 /* 版本提示条 */
@@ -698,7 +699,7 @@ body.is-admin #btnTplSel{display:inline-block}
           <button class="ghost" onclick="App.exitAdmin()">退出管理模式</button>
         </div>
         <div style="font-size:12px;color:#6b6396;line-height:1.7;margin-bottom:8px">
-          预设模板修改/上下架在本设备立即生效；打开下方「发布台」一键完成口令+模板+版本号的打包与自动发布，买家端出现更新提示条后自选时机刷新。
+          预设模板修改/上下架在本设备立即生效；<b>新建预设默认存为未上架草稿</b>，在此点「上架」后才会进入发布包。打开下方「发布台」一键完成口令+模板+版本号的打包与自动发布，买家端出现更新提示条后自选时机刷新。
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
           <button class="primary" onclick="App.openEditor(null,{presetNew:true})">＋ 新增预设模板</button>
@@ -838,7 +839,7 @@ const CURRENT_PASSWORD_HASH = "8c924d88408ac6e3d9edf0b13ed7e2c6a06c6ad25afc1352b
 const AUTH_SESSION_KEY = "xhs_auth_session";
 const AUTH_PERM_KEY    = "xhs_auth_perm_v1";
 const GUIDE_KEY = "xhs_guide_seen_v1";
-const TOOL_VERSION = "1.0.0";
+const TOOL_VERSION = "1.0.1";
 const REMOTE_VERSION_URL = "./version.json";
 const VERSION_SEEN_KEY = "xhs_last_version";
 const VERSION_SEEN_KEY_OLD = "xhs_seen_version_v1";
@@ -2399,7 +2400,7 @@ App.drawTextPH = function(ctx,ph,x,y,w,h,override,ovColor){
   ctx.save();
   App.rrPath(ctx,x,y,w,h,r); ctx.clip();
   ctx.font = `${ph.italic?"italic ":""}${ph.bold?"700":"400"} ${fs}px ${App.txtFontFamily(ph)}`;
-  ctx.textAlign = ph.align||"center"; ctx.textBaseline="top";
+  ctx.textAlign = ph.align||"center"; ctx.textBaseline="alphabetic";
   if(drawStroke){ ctx.strokeStyle=colorRgba(ph.strokeColor,strokeAlpha); ctx.lineWidth=sw; ctx.lineJoin="round"; ctx.miterLimit=2; }
   const tx = ph.align==="left"? x+pad : ph.align==="right"? x+w-pad : x+w/2;
   // 自适应宽度模式：仅按显式换行分段，不再按框宽折行（宽度已随文字测量）
@@ -2407,13 +2408,21 @@ App.drawTextPH = function(ctx,ph,x,y,w,h,override,ovColor){
     ? String(text==null?"":text).split("\n")
     : App.wrapText(ctx,text,Math.max(10,w-pad*2));
   const totalH = lines.length*lh;
-  let ty = ph.valign==="top" ? y+pad : ph.valign==="bottom" ? y+h-pad-totalH : y+(h-totalH)/2;
+  // 与工坊 DOM 完全同口径的 CSS 行盒模型：半行距 =（line-height − 字体内容高）/2，
+  // 基线 = 行顶 + 半行距 + 字体 ascent。用 alphabetic 基线逐行绘制，保证画布与预览位置一致。
+  // （旧实现用 textBaseline="top" + 固定半行距，对中文字体仍会偏高约 0.15em）
+  const mt=ctx.measureText(lines.find(s=>s)||"国");
+  const asc = mt.fontBoundingBoxAscent||mt.actualBoundingBoxAscent||fs*0.8;
+  const desc= mt.fontBoundingBoxDescent||mt.actualBoundingBoxDescent||fs*0.2;
+  const halfLead=(lh-(asc+desc))/2;
+  const boxTop = ph.valign==="top" ? y+pad : ph.valign==="bottom" ? y+h-pad-totalH : y+(h-totalH)/2;
+  const baseY = boxTop+halfLead+asc;
   if(hasFill) ctx.fillStyle = colorRgba(glyphFill,fillAlpha);
-  lines.forEach(ln=>{
+  lines.forEach((ln,i)=>{
+    const by=baseY+i*lh;
     // 先描边后填充，避免描边压住字面
-    if(drawStroke) ctx.strokeText(ln,tx,ty);
-    if(hasFill) ctx.fillText(ln,tx,ty);
-    ty+=lh;
+    if(drawStroke) ctx.strokeText(ln,tx,by);
+    if(hasFill) ctx.fillText(ln,tx,by);
   });
   ctx.restore();
 };
@@ -2547,18 +2556,21 @@ App.drawWarp=function(ctx,im,quad){
 App.drawSlotWarp=function(ctx,W,H,ph,slotImg,x,y,w,h){
   const quad=(ph.corners||[]).map(c=>[c.x/100*W,c.y/100*H]);
   if(quad.length!==4) return;
-  let src=null;
-  if(slotImg&&slotImg.img&&slotImg.img.naturalWidth){
-    // 与 3D 路径一致：先在元素盒内按 fit/圆角/填充出图，再单应贴到四边形（工坊样式 = 出图样式）
-    const box=App._boxCanvas(w,h);
-    App.drawFit(box.getContext("2d"),slotImg,0,0,box.width,box.height,ph.fit||"cover",(ph.radius||0)/100*Math.min(box.width,box.height),ph);
-    src=box;
-  }
-  if(src){
-    App.withShadow(ctx,W,H,ph.shadow,tc=>App.drawWarp(tc,src,quad));
-  }else{
-    App.drawQuadPlaceholder(ctx,quad,ph.shadow);
-  }
+  // 先在元素盒内按 fit/圆角/填充出图（无图也画填充色/空槽提示），再单应贴到四边形。
+  // 必须用网格单应（drawWarpMesh）：一般透视四边形不是仿射，两三角仿射会在对角线两侧产生不连续扭曲。
+  const box=App._boxCanvas(w,h);
+  App.drawFit(box.getContext("2d"),slotImg,0,0,box.width,box.height,ph.fit||"cover",(ph.radius||0)/100*Math.min(box.width,box.height),ph);
+  const hasImg=!!(slotImg&&slotImg.img&&slotImg.img.naturalWidth);
+  App.withShadow(ctx,W,H,ph.shadow,tc=>{
+    App.drawWarpMesh(tc,box,quad);
+    // 无图时叠加粉红虚线四边形边框，对应工坊画布的透视轮廓提示
+    if(!hasImg){
+      tc.save();
+      tc.setLineDash([16,10]); tc.strokeStyle="#ff3c5a"; tc.lineWidth=4;
+      tc.beginPath(); quad.forEach((p,i)=>i?tc.lineTo(p[0],p[1]):tc.moveTo(p[0],p[1])); tc.closePath(); tc.stroke();
+      tc.setLineDash([]); tc.restore();
+    }
+  });
 };
 // 空透视占位：淡紫底 + 粉红粗虚线框，缩略图也醒目
 App.drawQuadPlaceholder=function(ctx,quad,shadow){
@@ -2940,6 +2952,7 @@ App.renderTemplates = function(){
         ${(t.is_custom || App.isAdmin()) ? `<a class="danger" onclick="App.deleteTemplate('${t.id}')">删除</a>` : ""}
       </div>
       ${t.is_custom?`<span class="badge-custom">自制</span>`:(z==="all"?`<span class="badge-preset">官方</span>`:"")}
+      ${(!t.is_custom && App.isAdmin() && meta.shelf[t.id]===false)?`<span class="badge-offline">未上架</span>`:""}
       <div class="tpl-thumb" style="aspect-ratio:${App.ratioCss(t.ratio)};background:${t.bg||"#fff"}" id="tth-${t.id}">${App.miniTplHTML(t)}</div>
       <div class="tpl-name">${App.esc(t.name)} ${t.ratio}</div>
     </div>`;
@@ -3287,21 +3300,26 @@ App.generateSetBtn = App.guardAsync("generateSet", async function(si){
       :`已生成 ${s.pages.length} 页配图，可以点「检查」预览了`);
   }finally{ App.hideJob(); }
 });
-// 把未绑定的空图位按顺序绑定到素材：先用本方案尚未使用的，不够时从头循环使用（上传后无需重加模板）
+// 图位按顺序绑定素材：每个素材在本方案内首次出现的绑定予以保留（视为手动/历史选择），
+// 空槽或重复绑定的槽位按顺序改配给尚未使用的素材；槽位比素材多时才从头循环。
+// 修复：素材逐步上传时早期循环造成的重复绑定，会在新素材到位后自动纠正（两张模板不再共用一张图）。
 App.bindSetSlots = function(s){
   // 先修正 slots 长度/失效引用（模板后来增删过图位也能自愈）
   s.pages.forEach(p=>App.normalizePageSlots(p, App.tplById(p.tplId)));
-  const used=new Set();
-  s.pages.forEach(p=>(p.slots||[]).forEach(u=>{ if(u) used.add(u); }));
-  const pool=App.state.images.map(im=>im.uid).filter(u=>!used.has(u));
   const all=App.state.images.map(im=>im.uid);
-  let k=0;
-  s.pages.forEach(p=>{
-    (p.slots||[]).forEach((u,i)=>{
-      if(u) return;
-      if(k<pool.length) p.slots[i]=pool[k++];
-      else if(all.length) p.slots[i]=all[(k++)%all.length];
-    });
+  if(!all.length) return;
+  const N=all.length;
+  const refs=[];
+  s.pages.forEach(p=>(p.slots||[]).forEach((u,i)=>refs.push({p,i,u})));
+  const seen=new Set();
+  let fresh=0;
+  refs.forEach((r,j)=>{
+    const u=r.u;
+    if(u && all.includes(u) && !seen.has(u)){ seen.add(u); return; } // 首次出现：保留
+    // 顺序寻找下一个尚未使用的素材
+    while(fresh<N && seen.has(all[fresh])) fresh++;
+    if(fresh<N){ const pick=all[fresh]; seen.add(pick); r.p.slots[r.i]=pick; fresh++; }
+    else { r.p.slots[r.i]=all[j%N]; } // 素材不够：按顺序从头循环
   });
 };
 
@@ -5023,17 +5041,26 @@ App.saveTemplate = function(){
   // 管理模式 + 预设模板：保存 = 预设区覆盖版（导出模板包 → 重新部署后买家可见）
   if(App.ed.presetEdit && App.isAdmin && App.isAdmin()){
     data.is_custom=false; data.source="preset";
+    const isNew = !App.ed.editId;   // 全新预设：先存草稿（下架态），不自动上架
     const list=(App.state.presetTemplates||[]).slice();
     const i=list.findIndex(t=>t.id===data.id);
     if(i>=0) list[i]=data; else list.push(data);
     try{ App.savePresetTemplates(list); }
     catch(e){ return App.toast("保存失败：浏览器存储空间不足，请清理后重试"); }
+    if(isNew){
+      // 新建预设默认不上架：仅开发者在预设库/管理后台可见，手动「上架」后才进发布包
+      App.state.tplMeta.shelf=App.state.tplMeta.shelf||{};
+      App.state.tplMeta.shelf[data.id]=false;
+      App.saveTplMeta();
+    }
     App.loadTemplates(); App.renderTemplates();
     App.renderAdminPanel();
     App.syncTplPages(data.id);
     App.clearEdDraft();
     App.edAssets=new Map(); App._edAssetsSig="";
-    App.toast("预设模板已保存（本设备生效；买家端需随下次部署发布）");
+    App.toast(isNew
+      ? "新预设模板已存为草稿（未上架）：仅你可见，在管理后台点「上架」后才会随发布推给买家"
+      : "预设模板已保存（本设备生效；买家端需随下次部署发布）");
     App.closeEditor();
     return;
   }
