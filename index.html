@@ -447,18 +447,22 @@ body.is-admin #btnTplSel{display:inline-block}
   <div class="modal">
     <div class="modal-head">📖 使用指南<span class="spacer"></span><button class="ghost" onclick="App.closeGuide()">✕</button></div>
     <div class="modal-body">
-      <div class="guide-sec"><h3>第一步 · 上传图片</h3><ul>
-        <li>把 PPT 导出的页面图（或任意图片）拖进左上区域，支持批量拖入，自动按文件去重。</li></ul></div>
-      <div class="guide-sec"><h3>第二步 · 选模板排队</h3><ul>
-        <li>在左下模板库点卡片，模板会以「缩略图 + 名称」加入右侧当前方案（蓝色边框的方案）。</li>
-        <li>同一套素材可同时排多个方案，点方案卡切换当前方案；可建多套一次导出。</li></ul></div>
-      <div class="guide-sec"><h3>第三步 · 生成</h3><ul>
-        <li>排好后点方案右上角红色「🚀 生成」按钮，系统按顺序把素材填入各模板。</li></ul></div>
-      <div class="guide-sec"><h3>第四步 · 检查修改</h3><ul>
-        <li>点「👁 检查」逐页预览，可替换某张配图、换整页模板、修改文字。</li>
-        <li>有改动时会出现「💾 保存修改」，确认后生效；不想要可点「放弃更改」。</li></ul></div>
-      <div class="guide-sec"><h3>第五步 · 打包下载</h3><ul>
-        <li>全部方案确认后，用右下方「📦 打包 ZIP 下载」或「📁 保存到文件夹」统一输出。</li>
+      <div class="guide-sec"><h3>第一步 · 上传图片（任选一种方式，可混用）</h3><ul>
+        <li>点击左上上传区，在系统窗口里一次选多张图片批量上传；</li>
+        <li>直接把图片文件<b>拖拽</b>进上传区，支持一次拖入多张，自动按文件去重；</li>
+        <li>截图后在页面里按 <b>Ctrl+V</b>，直接粘贴上传，不用先存文件；</li>
+        <li>把 <b>PDF</b> 拖进来会自动转成图片，可勾选要哪几页（PPT 建议先导出/另存为 PDF）。</li></ul></div>
+      <div class="guide-sec"><h3>第二步 · 按笔记配图顺序依次点模板</h3><ul>
+        <li>在左下「模板库」里，按你发小红书笔记时配图的先后顺序，<b>依次点击模板卡片</b>；</li>
+        <li>每点一张，它就带编号加入右侧「配图方案」，素材会按顺序自动填入各页图位；</li>
+        <li>排错了可用行内 ▲▼ 调整顺序、✕ 移除；还能用比例标签和搜索快速找模板。</li></ul></div>
+      <div class="guide-sec"><h3>第三步 · 在配图方案里点「生成」</h3><ul>
+        <li>排好顺序后，点方案卡右上角红色「🚀 生成」按钮，系统把素材逐页套入模板生成配图。</li></ul></div>
+      <div class="guide-sec"><h3>第四步 · 输出前预览、检查与修改</h3><ul>
+        <li>点「👁 检查」逐页预览最终效果：可替换某页配图、更换整页模板、修改文字和文字颜色；</li>
+        <li>改动后点「💾 保存修改」生效，不想要可点「放弃更改」。每页配图都有唯一「身份码」。</li></ul></div>
+      <div class="guide-sec"><h3>第五步 · 选择适合的方式输出配图</h3><ul>
+        <li>全部确认后，在右下方选择「📦 打包 ZIP 下载」（打包成一个压缩包）或「📁 保存到文件夹」（直存到电脑指定文件夹）；</li>
         <li>自制模板可在模板库「导出 / 导入」为 .xhs-tpl 文件，便于备份换机。</li></ul></div>
     </div>
     <div class="modal-foot"><button class="primary" onclick="App.closeGuide()">我知道了</button></div>
@@ -570,7 +574,7 @@ body.is-admin #btnTplSel{display:inline-block}
 <div id="topbar">
   <div>
     <h1>小红书配图便捷生成工具</h1>
-    <div class="flow">上传 → 选模板 → 生成预览 → 确认修改 → 打包下载 <span id="verTag"></span></div>
+    <div class="flow">上传图片 → 按序选模板 → 生成 → 预览检查修改 → 输出配图 <span id="verTag"></span></div>
   </div>
   <span class="spacer"></span>
   <button onclick="App.openGuide()">📖 使用指南</button>
@@ -839,7 +843,7 @@ const CURRENT_PASSWORD_HASH = "8c924d88408ac6e3d9edf0b13ed7e2c6a06c6ad25afc1352b
 const AUTH_SESSION_KEY = "xhs_auth_session";
 const AUTH_PERM_KEY    = "xhs_auth_perm_v1";
 const GUIDE_KEY = "xhs_guide_seen_v1";
-const TOOL_VERSION = "1.0.1";
+const TOOL_VERSION = "1.0.2";
 const REMOTE_VERSION_URL = "./version.json";
 const VERSION_SEEN_KEY = "xhs_last_version";
 const VERSION_SEEN_KEY_OLD = "xhs_seen_version_v1";
@@ -1423,14 +1427,16 @@ App.closeGuide = function(){
 
 // ================= B2. 新手引导（只带路：高亮现有区域，不改任何功能路径） =================
 App.WIZ_STEPS = [
-  {sel:"#tplCard", title:"第 1 步 · 选场景",
-   text:"模板库里有封面、内页、四宫格、长图等场景版式。先用上方比例标签（全部 / 1:1 / 3:4 / 9:16）筛出你要的场景。"},
-  {sel:"#tplGrid", title:"第 2 步 · 选模板",
-   text:"点击一张模板卡片，它就会加入右侧当前方案排队；可以连续点多个模板，一次排多页。"},
-  {sel:"#imgCard", title:"第 3 步 · 填内容",
-   text:"把图片拖进左上角上传区（自动按顺序填入模板图位）；文字内容在方案的「👁 检查」弹窗里修改，改完点「🚀 生成」出新图。"},
-  {sel:"#exportCard", title:"第 4 步 · 导出",
-   text:"全部方案生成并检查满意后，点右下角「📦 打包 ZIP 下载」或「📁 保存到文件夹」，第一张配图就完成啦！"}
+  {sel:"#imgCard", title:"第 1 步 · 上传图片",
+   text:"上传方式任选、可混用：点击上传区批量选图；把图片拖进来；截图后直接 Ctrl+V 粘贴；拖入 PDF 还能勾选页面转成图片。自动去重，顺序就是后面的配图顺序。"},
+  {sel:"#tplGrid", title:"第 2 步 · 按顺序依次点模板",
+   text:"在模板库里，按你发笔记时配图的先后顺序依次点击模板卡片；每点一张就带编号加入右侧方案，可连续点多张。排错了用行内 ▲▼ 调整、✕ 移除。"},
+  {sel:"#setsWrap", title:"第 3 步 · 点「生成」",
+   text:"排好顺序后，点配图方案卡右上角红色「🚀 生成」按钮，素材会按顺序逐页套入模板，生成整套配图。"},
+  {sel:"#setsWrap", title:"第 4 步 · 预览、检查与修改",
+   text:"点「👁 检查」逐页预览输出效果：可替换配图、换整页模板、修改文字和颜色，改完点「💾 保存修改」。右下角的身份码每张配图都唯一。"},
+  {sel:"#exportCard", title:"第 5 步 · 选择方式输出",
+   text:"全部确认后，选「📦 打包 ZIP 下载」或「📁 保存到文件夹」输出配图，第一张笔记配图就完成啦！"}
 ];
 App.startWizard = function(i){
   App._wizStep = i||0;
@@ -1956,7 +1962,7 @@ App.imageByUid = function(uid){ return App.state.images.find(im=>im.uid===uid) |
 // 方案结构很小 → localStorage 立即写；图片 dataUrl 大 → IndexedDB 异步写（防抖合并）
 App.setsSerialize = function(){
   return App.state.sets.map(s=>({uid:s.uid,name:s.name,collapsed:s.collapsed,
-    pages:s.pages.map(p=>({tplId:p.tplId,slots:p.slots,texts:p.texts||{},colors:p.colors||{}}))}));
+    pages:s.pages.map(p=>({tplId:p.tplId,slots:p.slots,texts:p.texts||{},colors:p.colors||{},idCode:p.idCode||null}))}));
 };
 App.saveSets = function(){
   App.setStorage(SESSION_KEY+"_sets_v2", App.setsSerialize());
@@ -2007,7 +2013,7 @@ App.restoreSession = async function(){
       App.state.sets = (data||[]).map(s=>({
         uid:s.uid, name:s.name||"未命名方案", collapsed:!!s.collapsed,
         generated:false, dirty:false, thumbs:[],
-        pages:(s.pages||[]).map(p=>({tplId:p.tplId,slots:p.slots||[],texts:p.texts||{},colors:p.colors||{}})),
+        pages:(s.pages||[]).map(p=>({tplId:p.tplId,slots:p.slots||[],texts:p.texts||{},colors:p.colors||{},idCode:p.idCode||null})),
         canvases:[]
       }));
     }
@@ -2796,6 +2802,45 @@ App.makePage = function(tpl,page){
   const imgs = (page.slots||[]).map(uid=>{ const im=App.imageByUid(uid); return im?{img:im.img}:null; });
   return App.renderPageCanvas(tpl, imgs, page.texts||{}, page.colors||{});
 };
+// 配图身份码：时间戳（到秒）+ 密码学随机后缀。
+// 保证：同一张图、同一页模板，只要不是同一次生成，身份码就一定不同；
+// 同一秒内连续生成也有随机后缀区分（2.17 亿种组合/秒）。
+App.makeIdCode = function(){
+  const d=new Date(), p2=n=>String(n).padStart(2,"0");
+  const ts="XHS"+String(d.getFullYear()).slice(2)+p2(d.getMonth()+1)+p2(d.getDate())
+    +p2(d.getHours())+p2(d.getMinutes())+p2(d.getSeconds());
+  let rnd="";
+  try{
+    const a=new Uint32Array(2);
+    crypto.getRandomValues(a);
+    rnd=(a[0].toString(36)+a[1].toString(36)).toUpperCase();
+  }catch(e){
+    rnd=(Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2)+Date.now().toString(36)).toUpperCase();
+  }
+  rnd=rnd.replace(/[^0-9A-Z]/g,"");
+  while(rnd.length<6) rnd+=Math.floor(Math.random()*36).toString(36).toUpperCase();
+  return ts+"-"+rnd.slice(0,6);
+};
+// 在成图右下角盖一枚低调的半透明身份码章（随图片一起导出，无法被模板/素材内容复用）
+App.stampIdCode = function(cv,code){
+  if(!cv||!code) return cv;
+  const g=cv.getContext("2d");
+  g.save();
+  const fs=Math.max(13,Math.round(cv.width*0.0165));
+  const label="身份码 "+code;
+  g.font=`400 ${fs}px "Microsoft YaHei","PingFang SC","Hiragino Sans GB",sans-serif`;
+  const tw=g.measureText(label).width;
+  const padX=fs*0.7, padY=fs*0.42, h=fs+padY*2, w=tw+padX*2;
+  const x1=cv.width-w-fs*0.8, y1=cv.height-h-fs*0.8;
+  g.fillStyle="rgba(0,0,0,0.22)";
+  App.rrPath(g,x1,y1,w,h,h/2); g.fill();
+  g.fillStyle="rgba(255,255,255,0.92)";
+  g.textAlign="left"; g.textBaseline="middle";
+  g.fillText(label,x1+padX,y1+h/2+fs*0.03);
+  g.restore();
+  cv._idCode=code;
+  return cv;
+};
 App.releasePages = function(s){ s.canvases.forEach(cv=>{ cv.width=0;cv.height=0; }); s.canvases=[]; s.thumbs=[]; };
 
 // 模板几何缩略图（方案行未生成时的即时占位，随后会被 canvas 缩略图替换）
@@ -3264,6 +3309,9 @@ App.generateSet = function(si){
       cx.fillStyle="#9aa0ad"; cx.font="40px sans-serif"; cx.textAlign="center";
       cx.fillText("本页渲染失败，可重新生成", cv.width/2, cv.height/2);
     }
+    // 每页每次生成都重新签发身份码（时间+随机），并盖到成图上（须在缩略图之前）
+    p.idCode = App.makeIdCode();
+    App.stampIdCode(cv,p.idCode);
     s.canvases.push(cv);
     // 缩略图（小 dataURL，供行内显示）
     const tc=document.createElement("canvas");
@@ -3539,6 +3587,9 @@ App.renderPreviewCanvas = function(){
   if(!tpl) return;
   const imgs=App.pv.draft.slots.map(uid=>{ const im=App.imageByUid(uid); return im?{img:im.img}:null; });
   const cv=App.renderPageCanvas(tpl, imgs, App.pv.draft.texts, App.pv.draft.colors);
+  // 预览所见即所得：盖上当前这页已签发的身份码（未生成的旧数据无码则不盖）
+  const pvPage=App.state.sets[App.pv.si] && App.state.sets[App.pv.si].pages[App.pv.pi];
+  if(pvPage && pvPage.idCode) App.stampIdCode(cv,pvPage.idCode);
   const host=App.$("#pvMain");
   const old=App.$("#pvCanvas");
   cv.id="pvCanvas";
@@ -3583,11 +3634,25 @@ App.renderPreviewInfo = function(){
       </div>`;
   }).join("") || `<div class="small muted" style="margin-top:8px">本模板没有文字位。</div>`;
 
+  const pvSet=App.state.sets[App.pv.si];
+  const curCode=(pvSet && pvSet.pages[App.pv.pi] && pvSet.pages[App.pv.pi].idCode)||"";
+  const codeRow=curCode?`<div style="display:flex;align-items:center;gap:6px;margin:2px 0 10px;flex-wrap:wrap">
+      <span class="small muted">本页配图身份码：</span><b style="font-family:Consolas,monospace;font-size:12px" id="pvIdCode">${curCode}</b>
+      <button class="ghost" type="button" onclick="App.copyIdCode()">复制</button>
+      ${App.pv.dirty?'<span class="small" style="color:var(--pink)">保存修改后自动换发新码</span>':''}
+    </div>`:"";
+
   App.$("#pvInfo").innerHTML = `
     <h4 style="margin-top:0">第 ${App.pv.pi+1} / ${App.state.sets[App.pv.si].pages.length} 页 · 整页模板</h4>
+    ${codeRow}
     <select style="width:100%" onchange="App.changePvTpl(this.value)">${tplOpts}</select>
     <h4>配图替换</h4>${slotsHtml}
     ${textsHtml}`;
+};
+App.copyIdCode = function(){
+  const s=App.state.sets[App.pv.si];
+  const code=s && s.pages[App.pv.pi] && s.pages[App.pv.pi].idCode;
+  if(code) App._copyText(code);
 };
 App.pvGoto = function(pi){
   if(pi===App.pv.pi) return;
@@ -3632,12 +3697,14 @@ App.savePreviewChanges = function(){
   p.slots=App.pv.draft.slots.slice();
   p.texts=Object.assign({},App.pv.draft.texts);
   p.colors=Object.assign({},App.pv.draft.colors);
-  // 单页重生成
+  // 单页重生成（修改后视为一次新的出图：重新签发身份码）
   const tpl=App.tplById(p.tplId);
   if(tpl){
     let cv=null;
     try{ cv=App.makePage(tpl,p); }
     catch(e){ App.reportError("pv-render",e); App.toast("本页渲染失败，请调整后重试"); return false; }
+    p.idCode=App.makeIdCode();
+    App.stampIdCode(cv,p.idCode);
     if(s.canvases[App.pv.pi]){ s.canvases[App.pv.pi].width=0; s.canvases[App.pv.pi].height=0; }
     s.canvases[App.pv.pi]=cv;
     const tc=document.createElement("canvas");
@@ -5141,12 +5208,16 @@ App.collectExportFiles = async function(onProgress){
     while(usedNames.has(folder)) folder=App.sanitizeName(s.name)+"("+(++n)+")";
     usedNames.add(folder);
     for(let i=0;i<s.pages.length;i++){
+      const page=s.pages[i];
       let cv=s.canvases[i];
       if(!cv){
-        try{ cv=App.makePage(App.tplById(s.pages[i].tplId), s.pages[i]); s.canvases[i]=cv; }
+        try{ cv=App.makePage(App.tplById(page.tplId), page); s.canvases[i]=cv; }
         catch(e){ App.reportError("export-render",e); }
       }
       if(!cv){ failed.push(folder+"/"+(i+1)); done++; if(onProgress)onProgress(done,total); continue; }
+      // 身份码兜底：刷新页面后懒渲染、或旧版本生成的页，导出时补签；已盖章不重复盖
+      if(!page.idCode) page.idCode=App.makeIdCode();
+      if(cv._idCode!==page.idCode) App.stampIdCode(cv,page.idCode);
       try{
         const blob=await App.canvasToJpeg(cv);
         if(!blob || blob.size<128) throw new Error("空文件");
