@@ -1,0 +1,1351 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%237c7cf0'/%3E%3Cstop offset='1' stop-color='%235b3df5'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='14' fill='url(%23g)'/%3E%3Ccircle cx='24' cy='26' r='8' fill='none' stroke='white' stroke-width='4'/%3E%3Cpath d='M30 30l16 16-4 4-16-16' stroke='white' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M42 42l4 4M46 38l4 4' stroke='white' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E">
+<title>🔑 配图工具 · 发布台（口令 + 模板 + 版本 一键发布）</title>
+<style>
+:root{
+  --brand:#5b3df5; --brand-d:#4527d8; --brand-l:#f1ecfd;
+  --ink:#23243a; --ink2:#5a5d78; --ink3:#9aa0b5;
+  --line:#e8e6f5; --bg:#f6f5fb; --card:#fff;
+  --ok:#1aa05a; --ok-bg:#e8f8f0; --warn:#c47f00; --warn-bg:#fdf3e0; --danger:#e0455a; --danger-bg:#fdeef1;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:var(--bg);color:var(--ink);line-height:1.65;font-size:14px}
+.wrap{max-width:920px;margin:0 auto;padding:28px 18px 60px}
+.top{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+.logo{width:46px;height:46px;border-radius:13px;background:linear-gradient(135deg,#7a5cff,#5b3df5);color:#fff;display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:0 6px 16px rgba(91,61,245,.3)}
+h1{font-size:21px}
+.sub{color:var(--ink2);font-size:13px;margin-bottom:22px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px 24px;margin-bottom:18px;box-shadow:0 2px 10px rgba(60,50,140,.05)}
+.card h2{font-size:16px;margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.card h2 .num{background:var(--brand);color:#fff;width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:13px;flex:none}
+.card .hint{color:var(--ink2);font-size:12.5px;margin-bottom:16px}
+label{font-weight:600;font-size:13px;display:block;margin-bottom:5px}
+input[type=text],input[type=password]{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px;font-family:inherit;outline:none;transition:border .15s;background:#fff}
+input:focus{border-color:var(--brand)}
+input.mono{font-family:Consolas,"Courier New",monospace;font-size:12px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.btn{border:none;border-radius:10px;padding:10px 18px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:transform .08s,box-shadow .15s,background .15s}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:var(--brand);color:#fff;box-shadow:0 4px 12px rgba(91,61,245,.28)}
+.btn.primary:hover{background:var(--brand-d)}
+.btn.ghost{background:#f2f0fb;color:var(--brand-d);border:1px solid #ddd8f6}
+.btn.ghost:hover{background:#e9e5fb}
+.btn.green{background:var(--ok);color:#fff;box-shadow:0 4px 12px rgba(26,160,90,.28)}
+.btn.green:hover{background:#158a4c}
+.btn.big{width:100%;padding:15px;font-size:16px;margin-top:8px}
+.btn:disabled{opacity:.5;cursor:not-allowed;box-shadow:none}
+.pill{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:600}
+.pill.ok{background:var(--ok-bg);color:var(--ok)}
+.pill.warn{background:var(--warn-bg);color:var(--warn)}
+.pill.danger{background:var(--danger-bg);color:var(--danger)}
+.pill.info{background:var(--brand-l);color:var(--brand-d)}
+.status-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:11px 15px;border-radius:12px;background:var(--brand-l);font-size:13px;margin-bottom:18px}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--ink3);flex:none}
+.dot.ok{background:var(--ok)} .dot.err{background:var(--danger)}
+.pwd-block{border:1.5px solid var(--line);border-radius:13px;padding:16px 18px;margin-bottom:14px}
+.pwd-block.user{border-left:4px solid var(--brand)}
+.pwd-block.admin{border-left:4px solid #e8833a}
+.pwd-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px;flex-wrap:wrap}
+.pwd-head .t{font-weight:700;font-size:14.5px}
+.pwd-head .d{color:var(--ink2);font-size:12px}
+.pwd-input-wrap{position:relative}
+.pwd-input-wrap input{padding-right:46px}
+.eye{position:absolute;right:10px;top:50%;transform:translateY(-50%);border:none;background:none;cursor:pointer;font-size:16px;color:var(--ink3);padding:2px 4px}
+.hashbox{margin-top:9px;background:#faf9ff;border:1px dashed #d8d3f3;border-radius:9px;padding:8px 11px;font-size:11.5px;color:var(--ink2);display:flex;align-items:center;gap:8px;min-height:34px}
+.hashbox code{flex:1;word-break:break-all;font-family:Consolas,monospace}
+.mini{padding:4px 10px;font-size:12px;border-radius:7px;border:1px solid #ddd8f6;background:#fff;color:var(--brand-d);cursor:pointer;font-weight:600;white-space:nowrap}
+.mini:hover{background:var(--brand-l)}
+.opt-row{display:flex;gap:14px;flex-wrap:wrap;margin:9px 0 2px;font-size:12.5px;color:var(--ink2)}
+.opt-row label{display:inline-flex;align-items:center;gap:4px;font-weight:400;margin:0;cursor:pointer}
+.opt-row input[type=range]{vertical-align:middle}
+.strength{height:5px;border-radius:3px;background:#eceaf6;margin-top:8px;overflow:hidden}
+.strength i{display:block;height:100%;width:0;border-radius:3px;transition:width .25s,background .25s}
+.diff{font-size:11.5px;color:var(--ink2);margin-top:4px}
+.old-new{background:#faf9ff;border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-top:10px;font-size:12.5px}
+.old-new .line{display:flex;gap:8px;margin:4px 0;align-items:baseline}
+.old-new .k{width:82px;flex:none;color:var(--ink2)}
+.old-new code{font-family:Consolas,monospace;word-break:break-all}
+.log{margin-top:14px;border-radius:10px;background:#201f33;color:#d9d6f5;font-family:Consolas,monospace;font-size:12px;padding:13px 15px;white-space:pre-wrap;display:none;max-height:240px;overflow:auto}
+.log.show{display:block}
+.log .ok{color:#7fe6ac} .log .warn{color:#ffd07a} .log .err{color:#ff9aaa}
+.alert{border-radius:10px;padding:10px 14px;font-size:12.5px;margin:10px 0}
+.alert.warn{background:var(--warn-bg);color:#7a5200;border:1px solid #f0d79a}
+.alert.info{background:var(--brand-l);color:#46388f;border:1px solid #d6cff7}
+.alert.danger{background:var(--danger-bg);color:#9b2236;border:1px solid #f3bcc5}
+.alert.ok{background:var(--ok-bg);color:#0d6b3a;border:1px solid #b8e6cd}
+.center{text-align:center}
+.mt{margin-top:14px}
+.hidden{display:none!important}
+.small{font-size:12px;color:var(--ink3)}
+.lock-box{max-width:440px;margin:70px auto 0}
+.lock-box .card{text-align:center}
+.lock-icon{font-size:44px;margin-bottom:8px}
+#unlockErr{color:var(--danger);font-size:12.5px;min-height:18px;margin-top:8px}
+.srcfile{margin-top:12px;border:1px dashed #c9c2ec;border-radius:10px;padding:14px;background:#fbfaff;text-align:left}
+.srcfile .fname{font-weight:700;font-size:13px;word-break:break-all}
+label.chk{display:flex;align-items:flex-start;gap:7px;font-weight:400;font-size:12.5px;color:var(--ink2);cursor:pointer;margin-top:8px;line-height:1.5}
+label.chk input{margin:2px 0 0}
+.mode-box{border:1.5px solid var(--line);border-radius:13px;padding:14px 16px;margin-bottom:12px;background:#fdfcff}
+.mode-box .t{font-weight:700;font-size:13.5px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.mode-box .d{color:var(--ink2);font-size:12px;margin-top:2px}
+.mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;margin-top:8px}
+.mode-grid label.f{font-size:12px;font-weight:600}
+.mode-grid .full{grid-column:1/-1}
+#resultBox{border:1.5px solid #b8e6cd;border-radius:13px;padding:14px 18px;margin-top:14px;background:var(--ok-bg);display:none}
+#resultBox.show{display:block}
+#resultBox ol{padding-left:20px;margin:6px 0;font-size:13px}
+#resultBox li{margin:4px 0}
+.files-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.chip{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:12px}
+.chip b{font-weight:600;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chip .x{cursor:pointer;color:var(--ink3);border:none;background:none;font-size:12px;padding:0}
+.chip .x:hover{color:var(--danger)}
+.history{margin-top:10px;font-size:12px}
+.history table{width:100%;border-collapse:collapse;margin-top:6px}
+.history th,.history td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;font-size:12px;vertical-align:top}
+.history th{color:var(--ink2);font-weight:600}
+.history code{font-family:Consolas,monospace;font-size:11.5px;word-break:break-all}
+details.man{margin-top:12px;border:1px dashed var(--line);border-radius:10px;padding:10px 14px;font-size:12.5px;color:var(--ink2)}
+details.man ol{padding-left:20px;margin:6px 0}
+details.man summary{cursor:pointer;font-weight:700;color:var(--ink2)}
+.flash{animation:flash 1.2s ease 2}
+@keyframes flash{0%,100%{box-shadow:0 2px 10px rgba(60,50,140,.05)}50%{box-shadow:0 0 0 4px rgba(91,61,245,.35)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ================= 锁屏：先连接 index.html + 验证管理口令 ================= -->
+  <div id="lockScreen" class="lock-box">
+    <div class="card">
+      <div class="lock-icon">🔐</div>
+      <h2 style="justify-content:center">发布台</h2>
+      <p class="hint" style="margin-top:6px">给「小红书配图工具」一键发布：<br><b>新口令 + 新预设模板 + 新版本号</b>，并自动完成后续更新。<br>先连上配图工具的 <b>index.html</b>，再验证你是开发者。</p>
+
+      <div id="srcArea">
+        <div id="srcAuto" class="srcfile hidden">
+          <span class="pill ok">已自动连上</span>
+          <div class="fname" id="srcAutoName" style="margin-top:6px"></div>
+          <div class="small" id="srcAutoInfo"></div>
+          <button class="mini mt" onclick="P.pickFile()">手动换一批文件</button>
+        </div>
+        <div id="srcManual" class="srcfile">
+          <div style="margin-bottom:8px"><b>第 1 步：选择配图工具文件</b><br><span class="small">至少选择 <code>index.html</code>；建议同时选上 <code>version.js</code>、<code>update_log.js</code>（可多选，工具不会改动原文件）。</span></div>
+          <input type="file" id="filePick" accept=".html,.htm,.js,.json,.txt,.css,image/*" multiple class="hidden">
+          <button class="btn ghost" onclick="document.getElementById('filePick').click()">📂 选择文件（可多选）</button>
+          <div id="srcManualInfo" class="small mt"></div>
+        </div>
+      </div>
+
+      <div id="unlockArea" class="hidden mt">
+        <label style="text-align:left">第 2 步：输入<b>当前的管理口令</b></label>
+        <div class="pwd-input-wrap">
+          <input type="password" id="unlockPwd" placeholder="默认：xhs-admin@202609" onkeydown="if(event.key==='Enter')P.unlock()">
+          <button class="eye" onclick="P.toggleEye('unlockPwd',this)">👁</button>
+        </div>
+        <div id="unlockErr"></div>
+        <button class="btn primary big" onclick="P.unlock()">验证身份并进入</button>
+        <p class="small mt">为什么需要它：防止别人打开本工具乱改。口令错误时只会提示"不正确"，不会有其他信息。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 主界面 ================= -->
+  <div id="app" class="hidden">
+    <div class="top">
+      <div class="logo">🔑</div>
+      <div>
+        <h1>发布台</h1>
+        <div class="sub">口令 + 新模板 + 版本号 一键打包发布 · 买家端自选时机更新</div>
+      </div>
+    </div>
+
+    <div class="status-bar">
+      <span class="dot ok" id="connDot"></span>
+      <span id="connText"></span>
+      <span style="flex:1"></span>
+      <span class="small">当前版本 <b id="curVer">—</b></span>
+      <span class="small">用户哈希 <code id="curUserShort" class="mono"></code></span>
+      <span class="small">管理哈希 <code id="curAdminShort" class="mono"></code></span>
+      <button class="mini" onclick="P.disconnect()">重新选择文件</button>
+    </div>
+
+    <!-- ========== 功能一：生成新口令 ========== -->
+    <div class="card">
+      <h2><span class="num">1</span>生成新口令（可选）</h2>
+      <p class="hint">可以自己填，也可以点「🎲 随机生成」。生成后点「用这个口令 →」带到下面第 2 步。不需要换口令就留空。</p>
+
+      <div class="pwd-block user">
+        <div class="pwd-head">
+          <div><span class="t">👤 用户口令</span> <span class="d">— 发给买家，每月更新的那个</span></div>
+          <button class="mini" onclick="P.genRandom('user')">🎲 随机生成</button>
+        </div>
+        <div class="pwd-input-wrap">
+          <input type="password" id="newUser" placeholder="输入新的用户口令，或点右上角随机生成" oninput="P.onInput('user')">
+          <button class="eye" onclick="P.toggleEye('newUser',this)">👁</button>
+        </div>
+        <div class="strength"><i id="userBar"></i></div>
+        <div class="opt-row">
+          <label>长度 <input type="range" id="userLen" min="8" max="24" value="12" oninput="document.getElementById('userLenV').textContent=this.value"> <b id="userLenV">12</b> 位</label>
+          <label><input type="checkbox" id="userNum" checked>数字</label>
+          <label><input type="checkbox" id="userLower" checked>小写字母</label>
+          <label><input type="checkbox" id="userUpper" checked>大写字母</label>
+          <label><input type="checkbox" id="userSymb">符号</label>
+          <label><input type="checkbox" id="userNoAmbig" checked>排除易混字符(0/O、1/l)</label>
+        </div>
+        <div class="diff" id="userDiff"></div>
+        <div class="hashbox"><span class="small">SHA-256</span><code id="userHash">（输入口令后自动计算）</code><button class="mini" onclick="P.copy('userHash','哈希已复制')">复制</button></div>
+        <div class="mt"><button class="btn ghost" onclick="P.usePwd('user')">用这个口令 →</button></div>
+      </div>
+
+      <div class="pwd-block admin">
+        <div class="pwd-head">
+          <div><span class="t">🛠 管理口令</span> <span class="d">— 只有你知道，进入管理后台用</span></div>
+          <button class="mini" onclick="P.genRandom('admin')">🎲 随机生成</button>
+        </div>
+        <div class="pwd-input-wrap">
+          <input type="password" id="newAdmin" placeholder="输入新的管理口令，或点右上角随机生成" oninput="P.onInput('admin')">
+          <button class="eye" onclick="P.toggleEye('newAdmin',this)">👁</button>
+        </div>
+        <div class="strength"><i id="adminBar"></i></div>
+        <div class="opt-row">
+          <label>长度 <input type="range" id="adminLen" min="10" max="28" value="16" oninput="document.getElementById('adminLenV').textContent=this.value"> <b id="adminLenV">16</b> 位</label>
+          <label><input type="checkbox" id="adminNum" checked>数字</label>
+          <label><input type="checkbox" id="adminLower" checked>小写字母</label>
+          <label><input type="checkbox" id="adminUpper" checked>大写字母</label>
+          <label><input type="checkbox" id="adminSymb">符号</label>
+          <label><input type="checkbox" id="adminNoAmbig" checked>排除易混字符</label>
+        </div>
+        <div class="diff" id="adminDiff"></div>
+        <div class="hashbox"><span class="small">SHA-256</span><code id="adminHash">（输入口令后自动计算）</code><button class="mini" onclick="P.copy('adminHash','哈希已复制')">复制</button></div>
+        <div class="mt"><button class="btn ghost" onclick="P.usePwd('admin')">用这个口令 →</button></div>
+      </div>
+    </div>
+
+    <!-- ========== 功能二：一键发布 ========== -->
+    <div class="card" id="publishCard">
+      <h2><span class="num">2</span>一键发布（口令 + 新模板 + 版本号）</h2>
+      <p class="hint">三样都可以任选：换口令、带上新预设模板（买家端预设模板库自动更新）、版本号自动 +1（买家端顶部出现更新提示条，自选时机刷新）。点一次按钮，后续全部自动完成。</p>
+
+      <label>新用户口令（留空＝不换）</label>
+      <div class="pwd-input-wrap">
+        <input type="password" id="applyUser" placeholder="留空表示用户口令保持不变" oninput="P.refreshPreview()">
+        <button class="eye" onclick="P.toggleEye('applyUser',this)">👁</button>
+      </div>
+      <label class="mt">新管理口令（留空＝不换）</label>
+      <div class="pwd-input-wrap">
+        <input type="password" id="applyAdmin" placeholder="留空表示管理口令保持不变" oninput="P.refreshPreview()">
+        <button class="eye" onclick="P.toggleEye('applyAdmin',this)">👁</button>
+      </div>
+
+      <label class="mt">📎 附带新预设模板（可选）</label>
+      <div class="row">
+        <input type="file" id="packPick" accept=".json,.xhs-tpl,application/json" class="hidden">
+        <button class="btn ghost" onclick="document.getElementById('packPick').click()">选择模板包文件</button>
+        <span class="small" id="packInfo">未选择 —— 买家端预设模板库保持不变</span>
+        <button class="mini hidden" id="packClear" onclick="P.clearPack()">✕ 移除</button>
+      </div>
+      <div class="small" style="margin-top:4px">文件来自配图工具管理后台的「📦 导出全部预设模板 JSON」。发布后买家端会在下次打开时<b>整库替换</b>预设模板（自定义模板不受影响）。</div>
+
+      <label class="mt">🗂 发布文件清单（自动组装）</label>
+      <div class="files-chips" id="fileChips"></div>
+
+      <div class="old-new" id="previewBox">
+        <div class="small" style="margin-bottom:4px">变更预览：</div>
+        <div id="previewLines" class="small">暂无变更。</div>
+      </div>
+
+      <div class="mt">
+        <b style="font-size:13px">完成后自动执行（第 3 步可配置）：</b>
+        <div id="modeSummary" class="small" style="margin-top:3px">—</div>
+      </div>
+
+      <button class="btn green big" id="applyBtn" onclick="P.apply()">🚀 一键发布 · 自动完成全部更新</button>
+      <div class="log" id="log"></div>
+      <div id="resultBox"></div>
+    </div>
+
+    <!-- ========== 功能三：生效方式 ========== -->
+    <div class="card">
+      <h2><span class="num">3</span>生效方式（发布时自动执行）</h2>
+      <p class="hint">按你的使用方式勾选，可多选。发布时自动完成对应操作。</p>
+
+      <div class="mode-box">
+        <div class="t"><input type="checkbox" id="modeDir"> 💾 自动写入工具文件夹 <span class="pill info">本地双击打开 index.html 用的选这个</span></div>
+        <div class="d">写入后本地立即生效：重新打开 index.html 即用新口令/新模板，不用再手动替换文件。</div>
+        <div class="row" style="margin-top:8px">
+          <button class="btn ghost" onclick="P.pickDir()">📂 <span id="dirBtnText">选择工具文件夹</span></button>
+          <span class="small" id="dirStatus">未选择</span>
+        </div>
+      </div>
+
+      <div class="mode-box">
+        <div class="t"><input type="checkbox" id="modeCf" checked> 🚀 生成 Cloudflare 一键部署脚本 <span class="pill info">给买家在线用的选这个</span></div>
+        <div class="d">发布时自动在工具文件夹生成 <code>一键发布.bat</code>，双击它即自动部署到 Cloudflare Pages（约 1 分钟），买家端随后出现「工具已更新」提示条。<br>
+        <b>为什么不能网页直接部署？</b>浏览器安全策略（CORS）禁止网页直连 api.cloudflare.com（已实测无跨域许可），所以用本机脚本自动完成，口令只存你自己的电脑。</div>
+        <div class="mode-grid">
+          <label class="f">Account ID（dash.cloudflare.com 右侧）<input type="text" id="cfAccount" class="mono" placeholder="32 位十六进制" oninput="P.saveCfg()"></label>
+          <label class="f">Pages 项目名（访问地址前缀）<input type="text" id="cfProject" class="mono" placeholder="例如 my-image-tool" oninput="P.saveCfg()"></label>
+          <label class="f">API Token（需 Cloudflare Pages「编辑」权限）<input type="password" id="cfToken" class="mono" placeholder="粘贴后仅保存在本机" oninput="P.saveCfg()"><span class="small">留空则运行脚本时会询问一次</span></label>
+          <label class="f">生产分支<input type="text" id="cfBranch" class="mono" placeholder="main" value="main" oninput="P.saveCfg()"></label>
+          <label class="chk full"><input type="checkbox" id="cfRemember" checked onchange="P.saveCfg()"> 在本机记住以上发布配置（含 API Token，明文存本机浏览器存储，公用电脑不要勾）</label>
+        </div>
+      </div>
+
+      <div class="mode-box">
+        <div class="t"><input type="checkbox" id="modeZip"> 📦 同时下载 ZIP 部署包（备用）</div>
+        <div class="d">包含改好的全部文件 + 一键部署脚本，解压后也能手动上传 Cloudflare 或拷给别人。</div>
+      </div>
+    </div>
+
+    <!-- ========== 历史记录 ========== -->
+    <div class="card">
+      <h2><span class="num">4</span>发布 / 口令历史（仅存本机）</h2>
+      <p class="hint">每次发布的日期时间、口令内容、版本号与生效方式都会记录在这里，方便找回。点「清空记录」可全部删除。</p>
+      <label class="chk" style="margin:0 0 6px"><input type="checkbox" id="rememberChk" checked> 在历史记录中保存口令明文（仅存本机浏览器；公用电脑建议取消）</label>
+      <div class="history hidden" id="historyBox">
+        <div class="row" style="justify-content:space-between;margin-bottom:4px">
+          <b style="font-size:13px">发布记录</b>
+          <button class="mini" onclick="P.clearHistory()">清空记录</button>
+        </div>
+        <table><thead><tr><th style="width:130px">时间</th><th style="width:82px">类型</th><th>内容</th><th style="width:78px">版本</th><th style="width:120px">生效方式</th></tr></thead><tbody id="historyTbody"></tbody></table>
+      </div>
+    </div>
+
+    <!-- ========== 说明 ========== -->
+    <div class="card">
+      <h2><span class="num">5</span>发布后会发生什么</h2>
+      <ol style="padding-left:20px;font-size:13px;color:var(--ink2);margin:6px 0">
+        <li><b>本地使用者</b>：文件已自动写回工具文件夹，重新打开 index.html，旧口令被拒绝、新口令能进，即成功。</li>
+        <li><b>Cloudflare 使用者</b>：双击生成的 <code>一键发布.bat</code> → 看到「✓ 发布成功」→ 用无痕窗口打开买家网址验证。</li>
+        <li><b>买家端</b>：下次打开工具时顶部出现「工具已更新 v新版本」提示条，点「立即刷新」自选时机升级；若本次带了新预设模板，刷新后预设模板库自动替换为新模板（自定义模板保留）。</li>
+      </ol>
+      <details class="man">
+        <summary>手动部署（备用，一般用不到）</summary>
+        <p class="mt"><b>情况 A · 自己电脑双击用：</b>把生成的文件（或 ZIP 解压出来的 index.html、version.js 等）覆盖到工具文件夹，注意备份旧文件。</p>
+        <p class="mt"><b>情况 B · Cloudflare Pages 在线用：</b>登录 dash.cloudflare.com → Workers 和 Pages → 你的项目 → Deployments → Create deployment → Direct Upload，把 ZIP 解压出的 <b>index.html、version.js、update_log.js</b> 等拖进上传区（根目录）→ Deploy site。或者：Pages 连了 Git 的话，把文件覆盖进仓库提交推送即可。</p>
+        <p class="mt"><b>回退：</b>重新用本工具发布一次旧口令即可；每次发布前状态栏都显示当前哈希，可对照确认。</p>
+      </details>
+    </div>
+
+    <p class="small center mt">本工具纯本地运行：除发布配置（你主动勾选记住）与发布历史外，不存储任何数据、不上传任何文件。</p>
+  </div>
+</div>
+
+<script>
+"use strict";
+const P = {};
+P.state = {
+  src:"", srcName:"", srcFrom:"", oldUser:"", oldAdmin:"", previews:{}, history:[],
+  files:{},                 // 部署文件集 name -> {bytes:Uint8Array, text?:string}
+  pack:null, packName:"",   // 附带模板包 {templates:[...]}
+  dirHandle:null, dirOK:false,
+  patched:null              // 本次发布生成的最终文件集 {name:Uint8Array}
+};
+
+// ---------- 基础工具 ----------
+const $ = s => document.querySelector(s);
+const enc = new TextEncoder();
+const dec = new TextDecoder();
+const bytesHex = async buf => [...new Uint8Array(buf)].map(x=>x.toString(16).padStart(2,"0")).join("");
+P.sha256 = async str => bytesHex(await crypto.subtle.digest("SHA-256", enc.encode(str)));
+P.esc = s => String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+P.short = h => h ? h.slice(0,8)+"…"+h.slice(-6) : "—";
+
+P.log = function(msg, cls){
+  const box=$("#log"); box.classList.add("show");
+  const t=new Date().toLocaleTimeString();
+  box.innerHTML += `<span class="${cls||""}">[${t}] ${P.esc(msg)}</span>\n`;
+  box.scrollTop = box.scrollHeight;
+};
+P.toggleEye = function(id, btn){
+  const inp=$("#"+id);
+  if(inp.type==="password"){ inp.type="text"; btn.textContent="🙈"; }
+  else{ inp.type="password"; btn.textContent="👁"; }
+};
+P.copy = async function(txt, okMsg){
+  txt=String(txt||"").trim(); if(!txt) return;
+  try{ await navigator.clipboard.writeText(txt); P.toast(okMsg||"已复制"); }
+  catch(e){ const ta=document.createElement("textarea"); ta.value=txt; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove(); P.toast(okMsg||"已复制"); }
+};
+let toastTimer;
+P.toast = function(msg){
+  let t=$("#toast");
+  if(!t){ t=document.createElement("div"); t.id="toast";
+    Object.assign(t.style,{position:"fixed",left:"50%",bottom:"34px",transform:"translateX(-50%)",background:"#201f33",color:"#fff",padding:"10px 20px",borderRadius:"10px",fontSize:"13px",zIndex:999,boxShadow:"0 6px 18px rgba(0,0,0,.25)",opacity:"0",transition:"opacity .2s"});
+    document.body.appendChild(t); }
+  t.textContent=msg; t.style.opacity="1";
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.style.opacity="0",2200);
+};
+
+// ---------- 连接 index.html ----------
+const RE_USER  = /const CURRENT_PASSWORD_HASH\s*=\s*"[0-9a-fA-F]{64}"\s*;[^\n]*/;
+const RE_ADMIN = /const CURRENT_ADMIN_HASH\s*=\s*"[0-9a-fA-F]{64}"\s*;[^\n]*/;
+const OCC_USER  = /const CURRENT_PASSWORD_HASH\s*=\s*"[0-9a-fA-F]{64}"/g;
+const OCC_ADMIN = /const CURRENT_ADMIN_HASH\s*=\s*"[0-9a-fA-F]{64}"/g;
+const HASH_USER  = /const CURRENT_PASSWORD_HASH\s*=\s*"([0-9a-fA-F]{64})"/;
+const HASH_ADMIN = /const CURRENT_ADMIN_HASH\s*=\s*"([0-9a-fA-F]{64})"/;
+const RE_TOOL_VER = /const TOOL_VERSION\s*=\s*"([0-9]+\.[0-9]+\.[0-9]+)"/;
+const OCC_TOOL    = /const TOOL_VERSION\s*=\s*"[0-9]+\.[0-9]+\.[0-9]+"[^;\n]*/g;
+const RE_RESET    = /const TPL_RESET_EXPECT\s*=\s*"([^"]*)"/;
+const RE_REMOTE   = /window\.REMOTE_VERSION\s*=\s*"([0-9]+\.[0-9]+\.[0-9]+)"/;
+
+P.ingest = function(src, name, from){
+  const mu = src.match(HASH_USER), ma = src.match(HASH_ADMIN);
+  if(!mu && !ma) return false;
+  P.state.src=src; P.state.srcName=name; P.state.srcFrom=from;
+  P.state.oldUser = mu ? mu[1] : "";
+  P.state.oldAdmin = ma ? ma[1] : "";
+  P.state.files["index.html"] = {bytes:enc.encode(src), text:src};
+  $("#unlockArea").classList.remove("hidden");
+  setTimeout(()=>$("#unlockPwd").focus(),50);
+  return true;
+};
+
+P.addFile = function(name, bytes, text){
+  P.state.files[name] = text!==undefined ? {bytes, text} : {bytes};
+};
+
+P.ingestExtra = function(name, buf){
+  const isText = /\.(js|json|txt|css|html?)$/i.test(name);
+  const text = isText ? dec.decode(buf) : undefined;
+  P.addFile(name, new Uint8Array(buf), text);
+};
+
+P.init = async function(){
+  // 发布配置回填
+  try{
+    const cfg=JSON.parse(localStorage.getItem("xhs_pubtool_cfg")||"null");
+    if(cfg){
+      $("#cfAccount").value=cfg.account||""; $("#cfProject").value=cfg.project||"";
+      $("#cfBranch").value=cfg.branch||"main";
+      if(cfg.remember){ $("#cfToken").value=cfg.token||""; $("#cfRemember").checked=true; }
+      else $("#cfRemember").checked=false;
+    }
+  }catch(e){}
+  $("#modeDir").addEventListener("change",P.refreshPreview);
+  $("#modeCf").addEventListener("change",P.refreshPreview);
+  $("#modeZip").addEventListener("change",P.refreshPreview);
+  // 记住的文件夹
+  if(window.showDirectoryPicker){
+    try{
+      const h=await P.idbGet("dir");
+      if(h){
+        P.state.dirHandle=h;
+        const perm=await h.queryPermission({mode:"readwrite"});
+        if(perm==="granted"){ P.state.dirOK=true; $("#modeDir").checked=true; }
+        P.renderDir();
+      }
+    }catch(e){}
+  }else{
+    $("#dirBtnText").textContent="此浏览器不支持";
+    $("#dirStatus").textContent="请改用 Chrome / Edge";
+  }
+  // http 部署时自动读取同目录文件
+  if(location.protocol!=="file:"){
+    try{
+      const r = await fetch("index.html", {cache:"no-store"});
+      if(r.ok){
+        const src = await r.text();
+        if(P.ingest(src, location.origin + "/index.html", "auto")){
+          $("#srcAuto").classList.remove("hidden");
+          $("#srcManual").classList.add("hidden");
+          $("#srcAutoName").textContent = location.origin + "/index.html";
+          $("#srcAutoInfo").textContent = `已自动读取线上版本（${(src.length/1024).toFixed(1)} KB），并抓取 version.js / update_log.js 等。`;
+        }
+      }
+    }catch(e){}
+    for(const f of ["version.js","version.json","update_log.js"]){
+      try{
+        const r=await fetch(f,{cache:"no-store"});
+        if(r.ok) P.ingestExtra(f, await r.arrayBuffer());
+      }catch(e){}
+    }
+  }
+  $("#filePick").addEventListener("change", async e=>{
+    let gotMain=false;
+    for(const f of e.target.files){
+      try{
+        if(/\.(html?)$/i.test(f.name)){
+          const txt=await f.text();
+          if(P.ingest(txt,f.name,"file")){ gotMain=true;
+            $("#srcManualInfo").innerHTML =
+              `<span class="pill ok">读取成功</span> <b>${P.esc(f.name)}</b>（${(f.size/1024).toFixed(1)} KB）` +
+              `<div class="small mt">原文件不会被改动，发布时自动生成新文件。</div>`;
+          }else{
+            P.ingestExtra(f.name, await f.arrayBuffer());
+            $("#srcManualInfo").innerHTML = `<span class="pill danger">文件不对</span> ${P.esc(f.name)} 里没有配图工具口令常量，已当普通文件收进发布清单。`;
+          }
+        }else{
+          P.ingestExtra(f.name, await f.arrayBuffer());
+          if(!gotMain) $("#srcManualInfo").innerHTML = `<span class="small">已收录 ${P.esc(f.name)}。还需要选择 index.html。</span>`;
+        }
+      }catch(err){}
+    }
+    P.afterConnect();
+  });
+  $("#packPick").addEventListener("change", async e=>{
+    const f=e.target.files[0]; if(!f) return;
+    try{ await P.setPack(await f.text(), f.name); }
+    catch(err){ P.toast("模板包解析失败：不是有效的 JSON"); }
+    e.target.value="";
+  });
+  P.afterConnect();
+};
+
+P.afterConnect = function(){
+  if(!P.state.src) { P.renderFiles(); return; }
+  if(P.state.srcFrom==="auto"){
+    $("#connText").innerHTML = `已连接线上 index.html（自动读取）`;
+  }else{
+    $("#connText").innerHTML = `已连接本地文件 <b>${P.esc(P.state.srcName)}</b>`;
+  }
+  $("#curUserShort").textContent = P.short(P.state.oldUser);
+  $("#curAdminShort").textContent = P.short(P.state.oldAdmin);
+  P.loadHistory();
+  P.renderFiles();
+  P.refreshPreview();
+  if(location.hash==="#publish"){
+    setTimeout(()=>{ const c=$("#publishCard"); c.classList.add("flash"); c.scrollIntoView({behavior:"smooth",block:"center"}); setTimeout(()=>c.classList.remove("flash"),3000); },300);
+  }
+};
+
+P.disconnect = function(){ location.reload(); };
+
+P.pickFile = function(){ document.getElementById("filePick").click(); };
+
+// ---------- 管理口令解锁 ----------
+P.unlock = async function(){
+  const v=$("#unlockPwd").value;
+  const err=$("#unlockErr");
+  if(!v){ err.textContent="请输入管理口令"; return; }
+  if(!P.state.oldAdmin){
+    // 连接的文件里没有管理口令常量（版本过旧）：放行但提示
+    err.textContent="";
+    P.enterApp();
+    P.toast("注意：该 index.html 没有管理口令常量，已直接放行");
+    return;
+  }
+  const h=await P.sha256(v);
+  if(h!==P.state.oldAdmin){
+    err.textContent="管理口令不正确";
+    $("#unlockPwd").select();
+    return;
+  }
+  err.textContent="";
+  P.enterApp();
+};
+P.enterApp = function(){
+  $("#lockScreen").classList.add("hidden");
+  $("#app").classList.remove("hidden");
+  $("#unlockPwd").value="";
+  window.scrollTo(0,0);
+};
+
+// ---------- 文件清单 ----------
+P.renderFiles = function(){
+  const chips=Object.keys(P.state.files).sort().map(n=>{
+    const size=(P.state.files[n].bytes.length/1024).toFixed(1);
+    return `<span class="chip"><b title="${P.esc(n)}">${P.esc(n)}</b><span class="small">${size} KB</span>${n==="index.html"?'<span class="pill ok">主文件</span>':`<button class="x" title="移除" onclick="P.removeFile('${P.esc(n)}')">✕</button>`}</span>`;
+  });
+  if(P.state.src && !P.state.files["version.js"]){
+    chips.push(`<span class="chip"><span class="small">未提供 version.js：发布时将自动创建（版本号取自 index.html）</span></span>`);
+  }
+  const host=$("#fileChips");
+  if(host) host.innerHTML=chips.join("") || '<span class="small">尚未连接 index.html</span>';
+  $("#curVer").textContent = P.state.src ? "v"+P.curVersion() : "—";
+};
+
+P.removeFile = function(name){
+  if(name==="index.html") return;
+  delete P.state.files[name];
+  P.renderFiles(); P.refreshPreview();
+};
+
+// ---------- 模板包 ----------
+P.setPack = async function(text, name){
+  const j=JSON.parse(text);
+  const arr=Array.isArray(j)?j:(j && Array.isArray(j.templates)?j.templates:null);
+  if(!arr || !arr.length) throw new Error("empty");
+  let ok=0;
+  arr.forEach(t=>{ if(!P.validateTpl(t)) ok++; });
+  if(!ok) throw new Error("invalid");
+  P.state.pack={templates:arr}; P.state.packName=name||"模板包";
+  $("#packInfo").innerHTML=`<span class="pill ok">已附带</span> <b>${P.esc(P.state.packName)}</b>：${ok} 套有效模板（共 ${arr.length} 条，无效已忽略）`;
+  $("#packClear").classList.remove("hidden");
+  P.refreshPreview();
+};
+P.clearPack = function(){
+  P.state.pack=null; P.state.packName="";
+  $("#packInfo").textContent="未选择 —— 买家端预设模板库保持不变";
+  $("#packClear").classList.add("hidden");
+  P.refreshPreview();
+};
+P.validateTpl = function(t){
+  if(!t || typeof t!=="object" || Array.isArray(t)) return "不是模板对象";
+  if(!t.name || !String(t.name).trim()) return "缺少 name";
+  if(!t.ratio || !/^\d+\s*:\s*\d+$/.test(String(t.ratio))) return "ratio 不合法";
+  if(!Array.isArray(t.phs) || !t.phs.length) return "phs 必须是非空图层数组";
+  return null;
+};
+
+// ---------- 文件夹（File System Access API） ----------
+P.idb = ()=>new Promise((res,rej)=>{
+  const r=indexedDB.open("xhs_pubtool",1);
+  r.onupgradeneeded=()=>{ try{ r.result.createObjectStore("kv"); }catch(e){} };
+  r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error);
+});
+P.idbGet = async k=>{
+  const db=await P.idb();
+  return new Promise((res,rej)=>{ const rq=db.transaction("kv").objectStore("kv").get(k); rq.onsuccess=()=>res(rq.result); rq.onerror=()=>rej(rq.error); });
+};
+P.idbSet = async (k,v)=>{
+  const db=await P.idb();
+  return new Promise((res,rej)=>{ const tx=db.transaction("kv","readwrite"); tx.objectStore("kv").put(v,k); tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error); });
+};
+P.pickDir = async function(){
+  if(!window.showDirectoryPicker){ P.toast("此浏览器不支持，请用 Chrome / Edge，或改用 ZIP 部署包"); return; }
+  try{
+    const h=await window.showDirectoryPicker({id:"xhsToolDir", mode:"readwrite"});
+    P.state.dirHandle=h;
+    const perm=await h.queryPermission({mode:"readwrite"});
+    P.state.dirOK = perm==="granted";
+    await P.idbSet("dir", h);
+    if(!P.state.dirOK) $("#modeDir").checked=true;
+    P.renderDir(); P.refreshPreview();
+  }catch(e){ /* 用户取消 */ }
+};
+P.renderDir = function(){
+  const h=P.state.dirHandle;
+  if(!h){ $("#dirBtnText").textContent="选择工具文件夹"; $("#dirStatus").textContent="未选择"; return; }
+  $("#dirBtnText").textContent="更改文件夹";
+  $("#dirStatus").innerHTML = P.state.dirOK
+    ? `<span class="pill ok">已记住「${P.esc(h.name)}」，发布时自动写入</span>`
+    : `<span class="pill warn">已记住「${P.esc(h.name)}」，下次写入时会请求授权</span>`;
+};
+P.writeAll = async function(fileMap){
+  const h=P.state.dirHandle;
+  if(!h) throw new Error("未选择文件夹");
+  const opt={mode:"readwrite"};
+  let perm=await h.queryPermission(opt);
+  if(perm!=="granted") perm=await h.requestPermission(opt);
+  if(perm!=="granted") throw new Error("未获得文件夹写入权限");
+  const written=[];
+  for(const [name,bytes] of Object.entries(fileMap)){
+    const fh=await h.getFileHandle(name,{create:true});
+    const w=await fh.createWritable();
+    await w.write(bytes); await w.close();
+    written.push(name);
+  }
+  P.state.dirOK=true; P.renderDir();
+  return written;
+};
+
+// ---------- 版本号 ----------
+P.curVersion = function(){
+  const vj=P.state.files["version.js"];
+  if(vj && vj.text){ const m=vj.text.match(RE_REMOTE); if(m) return m[1]; }
+  const m=P.state.src.match(RE_TOOL_VER); if(m) return m[1];
+  return "1.0.0";
+};
+P.bumpVer = v => {
+  const p=String(v).split(".").map(n=>parseInt(n,10)||0);
+  p[2]=(p[2]||0)+1;
+  return p.join(".");
+};
+
+// ---------- 预览 ----------
+P.modeDesc = function(){
+  const parts=[];
+  if($("#modeDir").checked) parts.push(P.state.dirHandle?`写入文件夹「${P.state.dirHandle.name}」`:"写入文件夹（未选择，会临时询问）");
+  if($("#modeCf").checked) parts.push("生成 Cloudflare 一键部署脚本");
+  if($("#modeZip").checked) parts.push("下载 ZIP 部署包");
+  return parts.length?parts.join(" + "):"仅生成文件（ZIP 备用）";
+};
+P.refreshPreview = async function(){
+  const nu=$("#applyUser").value, na=$("#applyAdmin").value;
+  P.state.previews={userH: nu?await P.sha256(nu):"", adminH: na?await P.sha256(na):""};
+  const hasFile=!!P.state.src;
+  let html="";
+  if(!hasFile){ $("#previewLines").innerHTML='<span class="small">请先在上方连接 index.html。</span>'; $("#modeSummary").textContent=P.modeDesc(); return; }
+  html += `<div class="line"><span class="k">用户口令</span><span>${nu
+    ? `<code>${P.short(P.state.oldUser)}</code> → <code>${P.short(P.state.previews.userH)}</code> <span class="pill ok">将更换</span>`
+    : `<code>${P.short(P.state.oldUser)}</code> <span class="pill info">保持不变</span>`}</span></div>`;
+  html += `<div class="line"><span class="k">管理口令</span><span>${na
+    ? (P.state.oldAdmin?`<code>${P.short(P.state.oldAdmin)}</code> → <code>${P.short(P.state.previews.adminH)}</code>`:`<code>—</code> → <code>${P.short(P.state.previews.adminH)}</code>`)+` <span class="pill ok">将更换</span>`
+    : (P.state.oldAdmin?`<code>${P.short(P.state.oldAdmin)}</code> <span class="pill info">保持不变</span>`:`<code>—</code> <span class="pill warn">文件无此常量</span>`)}</span></div>`;
+  if(P.state.pack){
+    let ok=0; P.state.pack.templates.forEach(t=>{ if(!P.validateTpl(t)) ok++; });
+    html += `<div class="line"><span class="k">预设模板</span><span><b>${P.esc(P.state.packName)}</b>：${ok} 套 <span class="pill ok">换代发布</span> <span class="small">买家端预设库自动整库更新（自定义模板保留）</span></span></div>`;
+  }else{
+    html += `<div class="line"><span class="k">预设模板</span><span><span class="pill info">无变更</span></span></div>`;
+  }
+  const cur=P.curVersion();
+  html += `<div class="line"><span class="k">版本号</span><span><code>v${P.esc(cur)}</code> → <code>v${P.esc(P.bumpVer(cur))}</code> <span class="pill ok">自动 +1</span> <span class="small">买家端出现更新提示条，自选时机刷新</span></span></div>`;
+  $("#previewLines").innerHTML=html;
+  $("#modeSummary").textContent=P.modeDesc();
+};
+
+// ---------- 口令生成 ----------
+P.charset = function(kind){
+  const g=id=>$("#"+kind+id).checked;
+  let s="";
+  let lower="abcdefghijkmnpqrstuvwxyz", upper="ABCDEFGHJKLMNPQRSTUVWXYZ", num="23456789";
+  let lowerA="abcdefghijklmnopqrstuvwxyz", upperA="ABCDEFGHIJKLMNOPQRSTUVWXYZ", numA="0123456789";
+  const noAmbig=g("NoAmbig");
+  if(g("Lower")) s += noAmbig?lower:lowerA;
+  if(g("Upper")) s += noAmbig?upper:upperA;
+  if(g("Num"))   s += noAmbig?num:numA;
+  if(g("Symb"))  s += "!@#$%^&*-_=+?";
+  return s;
+};
+P.genRandom = function(kind){
+  const chars=P.charset(kind);
+  if(!chars){ P.toast("至少勾选一种字符"); return; }
+  const len=parseInt($("#"+kind+"Len").value,10);
+  const arr=new Uint32Array(len);
+  crypto.getRandomValues(arr);
+  let out="";
+  for(let i=0;i<len;i++) out+=chars[arr[i]%chars.length];
+  $("#new"+(kind==="user"?"User":"Admin")).value=out;
+  P.onInput(kind);
+  P.toast("已随机生成，发布后可在历史记录里找回");
+};
+P.onInput = async function(kind){
+  const id="new"+(kind==="user"?"User":"Admin");
+  const v=$("#"+id).value;
+  const score=P.strength(v);
+  const bar=$("#"+kind+"Bar"), diff=$("#"+kind+"Diff");
+  const colors=["#e0455a","#e8833a","#c4a72a","#3aaa5a","#1aa05a"];
+  const labels=["很弱","偏弱","一般","较强","很强"];
+  bar.style.width=(score*20)+"%"; bar.style.background=colors[score-1]||"#eceaf6";
+  diff.textContent=v?("口令强度："+labels[score-1]) : "";
+  $("#"+kind+"Hash").textContent = v ? await P.sha256(v) : "（输入口令后自动计算）";
+};
+P.strength = function(v){
+  if(!v) return 0;
+  let s=0;
+  if(v.length>=8) s++;
+  if(v.length>=12) s++;
+  let variety=0;
+  if(/[0-9]/.test(v)) variety++;
+  if(/[a-z]/.test(v)) variety++;
+  if(/[A-Z]/.test(v)) variety++;
+  if(/[^0-9a-zA-Z]/.test(v)) variety++;
+  if(variety>=3) s++;
+  if(variety>=4) s++;
+  return Math.max(1, Math.min(5, s));
+};
+P.usePwd = function(kind){
+  const srcId="new"+(kind==="user"?"User":"Admin");
+  const v=$("#"+srcId).value;
+  if(!v){ P.toast("先生成或输入口令"); return; }
+  const dstId="apply"+(kind==="user"?"User":"Admin");
+  $("#"+dstId).value=v;
+  P.refreshPreview();
+  $("#applyBtn").scrollIntoView({behavior:"smooth",block:"center"});
+  P.toast(kind==="user"?"新用户口令已带入第 2 步":"新管理口令已带入第 2 步");
+};
+
+// ---------- 发布配置 ----------
+P.saveCfg = function(){
+  try{
+    const remember=$("#cfRemember").checked;
+    const cfg={
+      account:$("#cfAccount").value.trim(), project:$("#cfProject").value.trim(),
+      branch:$("#cfBranch").value.trim()||"main",
+      token: remember?$("#cfToken").value.trim():"",
+      remember
+    };
+    localStorage.setItem("xhs_pubtool_cfg", JSON.stringify(cfg));
+    if(!remember) $("#cfToken").value="";
+  }catch(e){}
+};
+
+// ---------- 补丁 ----------
+P.patchHash = function(src, re, occ, line){
+  const cnt=(src.match(occ)||[]).length;
+  if(cnt!==1) throw new Error(`常量匹配异常（找到 ${cnt} 处），已中止，未生成文件`);
+  return src.replace(re, ()=>line);
+};
+P.buildPackJs = function(pack, reset, ver){
+  const payload={
+    app:"xhs-embed-pack", reset:String(reset),
+    exported_at:new Date().toISOString(),
+    tool: ver||"", templates:pack.templates
+  };
+  return JSON.stringify(payload)
+    .replace(/</g,"\\u003c").replace(/\u2028/g,"\\u2028").replace(/\u2029/g,"\\u2029");
+};
+
+// ---------- 一键发布 ----------
+P.apply = async function(){
+  if(!P.state.src){ P.toast("请先连接 index.html"); return; }
+  const nu=$("#applyUser").value, na=$("#applyAdmin").value;
+  const usePack=!!P.state.pack;
+  const curVer=P.curVersion(), newVer=P.bumpVer(curVer);
+  if(!nu && !na && !usePack){ P.toast("没有要发布的变更（口令、模板都未填写）"); return; }
+
+  // 校验与提醒
+  if(nu && P.state.oldUser && await P.sha256(nu)===P.state.oldUser){
+    if(!confirm("新【用户口令】和当前口令完全相同，确定也要继续吗？")) return;
+  }
+  if(na && P.state.oldAdmin && await P.sha256(na)===P.state.oldAdmin){
+    if(!confirm("新【管理口令】和当前口令完全相同，确定也要继续吗？")) return;
+  }
+  if((nu && nu.length<6) || (na && na.length<8)){
+    if(!confirm("口令偏短，安全性较弱。仍要继续吗？")) return;
+  }
+  let okN=0;
+  if(usePack){ P.state.pack.templates.forEach(t=>{ if(!P.validateTpl(t)) okN++; }); }
+
+  const tasks=[];
+  if(nu) tasks.push("用户口令");
+  if(na) tasks.push("管理口令");
+  if(usePack) tasks.push(`新预设模板 ${okN} 套（买家端整库更新）`);
+  tasks.push(`版本号 v${curVer} → v${newVer}`);
+  const modes=[];
+  const wantDir=$("#modeDir").checked, wantCf=$("#modeCf").checked, wantZip=$("#modeZip").checked;
+  if(wantDir) modes.push("写入文件夹");
+  if(wantCf) modes.push("CF一键部署脚本");
+  if(wantZip) modes.push("ZIP");
+  if(!modes.length){ if(!confirm("未勾选任何生效方式，将仅下载 ZIP 部署包。继续吗？")) return; modes.push("ZIP"); }
+  if(!confirm(`即将发布：\n· ${tasks.join("\n· ")}\n\n生效方式：${modes.join(" + ")}\n\n点「确定」开始（原文件不会被改动）。`)) return;
+
+  const btn=$("#applyBtn"); btn.disabled=true;
+  try{
+    P.log("开始生成新版本 …");
+    let src=P.state.src;
+
+    // 1. 口令
+    if(nu){
+      src=P.patchHash(src, RE_USER, OCC_USER, `const CURRENT_PASSWORD_HASH = "${await P.sha256(nu)}"; // 默认口令：${nu}`);
+      P.log("用户口令哈希已替换 ✓","ok");
+    }
+    if(na){
+      const h=await P.sha256(na);
+      const exists=HASH_ADMIN.test(src);
+      const line=`const CURRENT_ADMIN_HASH = "${h}"; // 默认管理口令：${na}`;
+      if(exists) src=P.patchHash(src, RE_ADMIN, OCC_ADMIN, line);
+      else{
+        const anchor=src.match(RE_USER);
+        if(!anchor) throw new Error("找不到管理口令插入位置，已中止");
+        src=src.slice(0,anchor.index+anchor[0].length)+"\n"+line+src.slice(anchor.index+anchor[0].length);
+      }
+      P.log("管理口令哈希已替换 ✓","ok");
+    }
+
+    // 2. 模板包换代
+    let newReset=null;
+    if(usePack){
+      const mr=src.match(RE_RESET);
+      if(!mr) throw new Error("找不到 TPL_RESET_EXPECT 常量，已中止（index.html 版本过旧）");
+      const cnt=(src.match(/const TPL_RESET_EXPECT\s*=\s*"[^"]*"/g)||[]).length;
+      if(cnt!==1) throw new Error(`TPL_RESET_EXPECT 匹配异常（${cnt} 处），已中止`);
+      newReset=String((parseInt(mr[1],10)||0)+1);
+      src=src.replace(RE_RESET, ()=>`const TPL_RESET_EXPECT = "${newReset}"`);
+      const embedLine=`window.XHS_EMBED_TPL_PACK = ${P.buildPackJs(P.state.pack, newReset, newVer)};`;
+      const nl=src.indexOf("\n", mr.index);
+      const at = nl<0 ? src.length : nl;
+      src=src.slice(0,at)+"\n"+embedLine+src.slice(at);
+      P.log(`预设模板包已嵌入（${okN} 套，换代值 ${mr[1]} → ${newReset}）✓`,"ok");
+    }
+
+    // 3. 版本号
+    const tv=(src.match(OCC_TOOL)||[]).length;
+    if(tv>1) throw new Error(`TOOL_VERSION 匹配异常（${tv} 处），已中止`);
+    src=src.replace(RE_TOOL_VER, ()=>`const TOOL_VERSION = "${newVer}"`);
+    P.log(`版本号 v${curVer} → v${newVer} ✓`,"ok");
+
+    // 4. version.js / version.json
+    const files={};
+    files["index.html"]=enc.encode(src);
+    let vjs=P.state.files["version.js"] && P.state.files["version.js"].text;
+    if(vjs){
+      if(!RE_REMOTE.test(vjs)) throw new Error("version.js 内容异常（没有 REMOTE_VERSION），已中止");
+      vjs=vjs.replace(RE_REMOTE, ()=>`window.REMOTE_VERSION = "${newVer}"`);
+    }else{
+      vjs=`// 版本提示条配置：每次发布自动 +1。买家旧页面检测到版本升高，显示「工具已更新」提示条，点击才刷新，不打断使用。\nwindow.REMOTE_VERSION = "${newVer}";\n`;
+      P.log("version.js 原先缺失，已自动创建","warn");
+    }
+    files["version.js"]=enc.encode(vjs);
+    const vjson=P.state.files["version.json"] && P.state.files["version.json"].text;
+    if(vjson) files["version.json"]=enc.encode(vjson.replace(/("version"\s*:\s*")[^"]*(")/, `$1${newVer}$2`));
+
+    // 5. 其余文件原样带上
+    for(const [name,f] of Object.entries(P.state.files)){
+      if(name==="index.html"||name==="version.js"||name==="version.json") continue;
+      files[name]=f.bytes;
+    }
+
+    // 自检
+    if(nu && !src.includes(`"${await P.sha256(nu)}"`)) throw new Error("自检失败：新用户哈希未写入");
+    if(na && !src.includes(`"${await P.sha256(na)}"`)) throw new Error("自检失败：新管理哈希未写入");
+    if(P.state.oldUser && nu && src.includes(P.state.oldUser)) throw new Error("自检失败：旧用户哈希仍残留");
+    if(P.state.oldAdmin && na && src.includes(P.state.oldAdmin)) throw new Error("自检失败：旧管理哈希仍残留");
+    if(usePack && !src.includes("XHS_EMBED_TPL_PACK")) throw new Error("自检失败：模板包未写入");
+    if(!src.includes(`const TOOL_VERSION = "${newVer}"`)) throw new Error("自检失败：版本号未写入");
+    if(!src.includes("</html>") || !src.includes("小红书配图")) throw new Error("自检失败：文件结构异常，已中止");
+    P.log("自检通过 ✓","ok");
+
+    // 6. 生效方式
+    const result=[];
+    P.state.patched=files;
+    const helper=wantCf?P.buildHelpers(newVer, Object.keys(files)):null;
+
+    let dirWritten=false;
+    if(wantDir && P.state.dirHandle){
+      try{
+        const toWrite=Object.assign({}, files);
+        if(helper){ toWrite["一键发布.bat"]=helper.bat; toWrite["_deploy.py"]=helper.py; toWrite["_deploy_config.json"]=helper.cfg; }
+        const written=await P.writeAll(toWrite);
+        P.log(`已写入 ${written.length} 个文件到「${P.state.dirHandle.name}」✓`,"ok");
+        result.push({ok:true, txt:`本地文件夹「${P.state.dirHandle.name}」已更新（${written.length} 个文件）`});
+        if(helper) result.push({ok:true, txt:"Cloudflare 一键部署脚本已生成：双击工具文件夹里的「一键发布.bat」完成线上发布"});
+        dirWritten=true;
+      }catch(e){
+        P.log("写入文件夹失败："+e.message+"，改为 ZIP 兜底","err");
+        result.push({ok:false, txt:`写入文件夹失败：${e.message}`});
+      }
+    }
+    if(!dirWritten){
+      await P.downloadZip(files, helper, newVer);
+      result.push({ok:true, txt:helper
+        ?"ZIP 部署包已下载（含「一键发布.bat」，解压后双击即可部署 Cloudflare）"
+        :"ZIP 部署包已下载（解压后覆盖到工具文件夹即可）"});
+    }else if(wantZip){
+      await P.downloadZip(files, helper, newVer);
+      result.push({ok:true, txt:"ZIP 部署包已下载（备用）"});
+    }
+
+    // 历史记录
+    const items=[];
+    if(nu) items.push({t:"用户口令", v:$("#rememberChk").checked?nu:"（未保存明文）"});
+    if(na) items.push({t:"管理口令", v:$("#rememberChk").checked?na:"（未保存明文）"});
+    if(usePack) items.push({t:"预设模板", v:`${P.state.packName}（${okN} 套，换代 ${newReset}）`});
+    items.push({t:"版本号", v:`v${curVer} → v${newVer}`});
+    P.addHistory(items, `v${newVer}`, modes.join("+"));
+
+    $("#curUserShort").textContent=P.short(nu?await P.sha256(nu):P.state.oldUser);
+    $("#curAdminShort").textContent=P.short(na?await P.sha256(na):P.state.oldAdmin);
+    if(nu) P.state.oldUser=await P.sha256(nu);
+    if(na) P.state.oldAdmin=await P.sha256(na);
+    P.state.src=src;
+    P.state.files["index.html"]={bytes:enc.encode(src), text:src};
+    $("#applyUser").value=""; $("#applyAdmin").value="";
+    $("#curVer").textContent="v"+newVer;
+    P.refreshPreview();
+
+    // 结果面板
+    const cfFirst=result.find(r=>r.txt.includes("一键发布.bat")||r.txt.includes("一键部署"));
+    let steps="";
+    if(cfFirst) steps+=`<li>双击工具文件夹里的 <b>一键发布.bat</b>（需要本机装有 Python；脚本纯标准库、无第三方依赖，Token 只存在你电脑上）。</li><li>看到「[OK] 发布成功」后，用无痕窗口打开买家网址验证：旧口令进不去、新口令能进。</li>`;
+    if(dirWritten) steps+=`<li>本地已生效：重新打开 index.html 即用新口令${usePack?"与新模板库":""}。</li>`;
+    steps+=`<li>买家端下次打开时顶部出现「工具已更新 v${newVer}」提示条，点「立即刷新」自选时机升级；刷新后${usePack?"预设模板库已自动替换为新模板":"进入新版工具"}。</li>`;
+    $("#resultBox").innerHTML=`<b>✅ 发布完成（v${P.esc(newVer)}）</b><ol>${steps}</ol>`;
+    $("#resultBox").classList.add("show");
+    P.toast("发布完成，请看下方结果提示");
+  }catch(e){
+    P.log("失败："+e.message+"（未生成/未写入任何文件）","err");
+    P.toast("发布失败："+e.message);
+  }finally{
+    btn.disabled=false;
+  }
+};
+
+// ---------- 一键部署脚本生成 ----------
+P.buildHelpers = function(ver, fileNames){
+  const cfg={
+    account_id:$("#cfAccount").value.trim(),
+    project:$("#cfProject").value.trim(),
+    branch:$("#cfBranch").value.trim()||"main",
+    api_token:$("#cfToken").value.trim(),
+    files:fileNames.slice(),
+    version:ver
+  };
+  if(!cfg.account_id || !cfg.project)
+    P.log("提示：Account ID / 项目名未填全，部署脚本运行时会再要求输入","warn");
+  const cfgBytes=enc.encode(JSON.stringify(cfg,null,2));
+  const pyBytes=enc.encode(P.DEPLOY_PY);
+  const batBytes=enc.encode("@echo off\r\nchcp 65001 >nul\r\ncd /d \"%~dp0\"\r\necho ==============================================\r\necho  Deploying to Cloudflare Pages ...\r\necho ==============================================\r\nwhere py >nul 2>nul\r\nif %errorlevel%==0 (py -3 \"_deploy.py\") else (python \"_deploy.py\")\r\necho.\r\npause\r\n");
+  return {cfg:cfgBytes, py:pyBytes, bat:batBytes};
+};
+
+P.downloadZip = async function(files, helper, ver){
+  const entries=[];
+  const order=Object.keys(files).sort((a,b)=>(a==="index.html"?-1:b==="index.html"?1:a.localeCompare(b)));
+  for(const n of order) entries.push({name:n, bytes:files[n]});
+  if(helper){
+    entries.push({name:"一键发布.bat", bytes:helper.bat});
+    entries.push({name:"_deploy.py", bytes:helper.py});
+    entries.push({name:"_deploy_config.json", bytes:helper.cfg});
+  }
+  const zip=P.zipEntries(entries);
+  await P.download(`配图工具_v${ver}.zip`, zip);
+  P.log(`ZIP 部署包已下载（${entries.length} 个文件）✓`,"ok");
+};
+
+P.download = async function(name, bytes){
+  const blob=new Blob([bytes]);
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download=name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+  await new Promise(r=>setTimeout(r,400));
+};
+
+// ---------- ZIP（store 模式，无依赖） ----------
+P._crcTable = null;
+P.crcTable = function(){
+  if(P._crcTable) return P._crcTable;
+  const t=new Uint32Array(256);
+  for(let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++) c = (c&1) ? (0xEDB88320 ^ (c>>>1)) : (c>>>1); t[n]=c>>>0; }
+  P._crcTable=t; return t;
+};
+P.zipEntries = function(entries){
+  const crcT=P.crcTable();
+  const crc32=b=>{let c=0xFFFFFFFF;for(let i=0;i<b.length;i++)c=crcT[(c^b[i])&0xFF]^(c>>>8);return (c^0xFFFFFFFF)>>>0;};
+  const now=new Date();
+  const dosTime=((now.getHours()<<11)|(now.getMinutes()<<5)|(now.getSeconds()>>1))&0xFFFF;
+  const dosDate=(((now.getFullYear()-1980)<<9)|((now.getMonth()+1)<<5)|now.getDate())&0xFFFF;
+  const local=[], central=[]; let offset=0;
+  for(const e of entries){
+    const nameB=enc.encode(e.name), data=e.bytes, crc=crc32(data);
+    const lh=new DataView(new ArrayBuffer(30));
+    lh.setUint32(0,0x04034b50,true); lh.setUint16(4,20,true); lh.setUint16(6,0x0800,true);
+    lh.setUint16(10,dosTime,true); lh.setUint16(12,dosDate,true);
+    lh.setUint32(14,crc,true); lh.setUint32(18,data.length,true); lh.setUint32(22,data.length,true);
+    lh.setUint16(26,nameB.length,true);
+    local.push(new Uint8Array(lh.buffer), nameB, data);
+    const ch=new DataView(new ArrayBuffer(46));
+    ch.setUint32(0,0x02014b50,true); ch.setUint16(4,20,true); ch.setUint16(6,20,true); ch.setUint16(8,0x0800,true);
+    ch.setUint16(12,dosTime,true); ch.setUint16(14,dosDate,true);
+    ch.setUint32(16,crc,true); ch.setUint32(20,data.length,true); ch.setUint32(24,data.length,true);
+    ch.setUint16(28,nameB.length,true); ch.setUint32(42,offset,true);
+    central.push(new Uint8Array(ch.buffer), nameB);
+    offset += 30+nameB.length+data.length;
+  }
+  let cdSize=0; for(const c of central) cdSize+=c.length;
+  const eocd=new DataView(new ArrayBuffer(22));
+  eocd.setUint32(0,0x06054b50,true);
+  eocd.setUint16(8,entries.length,true); eocd.setUint16(10,entries.length,true);
+  eocd.setUint32(12,cdSize,true); eocd.setUint32(16,offset,true);
+  const all=[...local,...central,new Uint8Array(eocd.buffer)];
+  const total=all.reduce((s,a)=>s+a.length,0);
+  const out=new Uint8Array(total); let p=0;
+  for(const a of all){ out.set(a,p); p+=a.length; }
+  return out;
+};
+
+// ---------- 历史 ----------
+P.loadHistory = function(){
+  try{ P.state.history=JSON.parse(localStorage.getItem("xhs_pwdtool_history")||"[]")||[]; }catch(e){ P.state.history=[]; }
+  P.renderHistory();
+};
+P.addHistory = function(items, ver, modes){
+  P.state.history.unshift({at:new Date().toLocaleString("zh-CN",{hour12:false}), ver, modes, items});
+  P.state.history=P.state.history.slice(0,50);
+  try{ localStorage.setItem("xhs_pwdtool_history", JSON.stringify(P.state.history)); }catch(e){}
+  P.renderHistory();
+};
+P.renderHistory = function(){
+  const box=$("#historyBox");
+  const list=P.state.history;
+  if(!list.length){ box.classList.add("hidden"); return; }
+  box.classList.remove("hidden");
+  const rows=[];
+  list.forEach((h,hi)=>{
+    const items=h.items||[{t:(h.type||"口令"), v:h.pwd||""}];
+    items.forEach((it,ii)=>{
+      rows.push(`<tr>`+
+        `<td>${ii===0?P.esc(h.at):""}</td>`+
+        `<td><span class="pill ${/管理/.test(it.t)?"warn":/模板/.test(it.t)?"ok":/版本/.test(it.t)?"info":"info"}">${P.esc(it.t)}</span></td>`+
+        `<td><code>${P.esc(it.v)}</code>${(/口令/.test(it.t)&&it.v&&$("#rememberChk").checked)?` <button class="mini" onclick="P.copy('${P.esc(it.v).replace(/'/g,"\\'")}','已复制')">复制</button>`:""}</td>`+
+        `<td>${ii===0?`<span class="pill info">${P.esc(h.ver||"")}</span>`:""}</td>`+
+        `<td class="small">${ii===0?P.esc(h.modes||""):""}</td>`+
+      `</tr>`);
+    });
+  });
+  $("#historyTbody").innerHTML=rows.join("");
+};
+P.clearHistory = function(){
+  if(!confirm("清空本机发布/口令记录？")) return;
+  P.state.history=[]; localStorage.removeItem("xhs_pwdtool_history");
+  P.renderHistory(); P.toast("已清空");
+};
+
+// ---------- _deploy.py（纯标准库 + 内嵌 BLAKE3，Cloudflare Pages Direct Upload） ----------
+P.DEPLOY_PY = String.raw`#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""Cloudflare Pages 一键部署脚本（由发布台自动生成，纯 Python 标准库，无第三方依赖）。
+
+用法：双击同目录的 一键发布.bat（或命令行运行 python _deploy.py）。
+配置：同目录 _deploy_config.json（Account ID / 项目名 / API Token / 文件清单）。
+"""
+import base64, json, os, struct, sys, time, uuid
+import urllib.request, urllib.error
+
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+CFG_PATH = os.path.join(HERE, "_deploy_config.json")
+DEFAULT_API = "https://api.cloudflare.com/client/v4"
+
+# ---------------- BLAKE3（unkeyed, 32 字节输出） ----------------
+_B3_IV = (0x6A09E667,0xBB67AE85,0x3C6EF372,0xA54FF53A,0x510E527F,0x9B05688C,0x1F83D9AB,0x5BE0CD19)
+_B3_PERM = (2,6,3,10,7,0,4,13,1,11,12,5,9,14,15,8)
+_M = 0xFFFFFFFF
+
+def _rotr(x, n):
+    return ((x >> n) | (x << (32 - n))) & _M
+
+def _g(s, a, b, c, d, mx, my):
+    s[a] = (s[a] + s[b] + mx) & _M; s[d] = _rotr(s[d] ^ s[a], 16)
+    s[c] = (s[c] + s[d]) & _M;      s[b] = _rotr(s[b] ^ s[c], 12)
+    s[a] = (s[a] + s[b] + my) & _M; s[d] = _rotr(s[d] ^ s[a], 8)
+    s[c] = (s[c] + s[d]) & _M;      s[b] = _rotr(s[b] ^ s[c], 7)
+
+def _compress(cv, block_words, counter, block_len, flags):
+    state = list(cv) + list(_B3_IV)
+    state[12] = counter & _M
+    state[13] = (counter >> 32) & _M
+    state[14] = block_len
+    state[15] = flags
+    m = list(block_words)
+    for r in range(7):
+        _g(state,0,4,8,12,m[0],m[1]);  _g(state,1,5,9,13,m[2],m[3])
+        _g(state,2,6,10,14,m[4],m[5]); _g(state,3,7,11,15,m[6],m[7])
+        _g(state,0,5,10,15,m[8],m[9]); _g(state,1,6,11,12,m[10],m[11])
+        _g(state,2,7,8,13,m[12],m[13]);_g(state,3,4,9,14,m[14],m[15])
+        if r < 6:
+            m = [m[_B3_PERM[i]] for i in range(16)]
+    out = list(state)
+    for i in range(8):
+        out[i] ^= out[i + 8]
+        out[i + 8] ^= cv[i]
+    return out
+
+class _Chunk:
+    __slots__ = ("cv", "counter", "buf", "blocks", "n")
+    def __init__(self, counter):
+        self.cv = list(_B3_IV); self.counter = counter
+        self.buf = b""; self.blocks = 0; self.n = 0
+    def update(self, data):
+        self.n += len(data)
+        while data:
+            if len(self.buf) == 64:
+                start = 1 if self.blocks == 0 else 0
+                self.cv = _compress(self.cv, list(struct.unpack("<16I", self.buf)), self.counter, 64, start)[0:8]
+                self.blocks += 1; self.buf = b""
+            take = min(64 - len(self.buf), len(data))
+            self.buf += data[:take]; data = data[take:]
+    def chain(self):
+        start = 1 if self.blocks == 0 else 0
+        buf = self.buf + b"\x00" * (64 - len(self.buf))
+        return _compress(self.cv, list(struct.unpack("<16I", buf)), self.counter, len(self.buf), start | 2)[0:8]
+
+class _B3:
+    def __init__(self):
+        self.chunk = _Chunk(0); self.stack = []; self.done = 0
+    def update(self, data):
+        while data:
+            if self.chunk.n == 1024:
+                self.done += 1
+                self._add(self.chunk.chain(), self.done)
+                self.chunk = _Chunk(self.done)
+            take = min(1024 - self.chunk.n, len(data))
+            self.chunk.update(data[:take]); data = data[take:]
+    def _add(self, cv, total):
+        while total & 1 == 0:
+            cv = self._parent(self.stack.pop(), cv, 0)
+            total >>= 1
+        self.stack.append(cv)
+    def _parent(self, left, right, extra):
+        w = struct.unpack("<16I", struct.pack("<8I", *left) + struct.pack("<8I", *right))
+        return _compress(list(_B3_IV), list(w), 0, 64, 4 | extra)[0:8]
+    def hexdigest(self):
+        ch = self.chunk
+        start = 1 if ch.blocks == 0 else 0
+        buf = ch.buf + b"\x00" * (64 - len(ch.buf))
+        # 待折叠的最终输出（先不带 ROOT 标志；送入父节点的 chaining value 必须无根）
+        pend = (ch.cv, list(struct.unpack("<16I", buf)), ch.counter, len(ch.buf), start | 2)
+        for cv in reversed(self.stack):
+            prev = _compress(*pend)[0:8]
+            w = struct.unpack("<16I", struct.pack("<8I", *cv) + struct.pack("<8I", *prev))
+            pend = (list(_B3_IV), list(w), 0, 64, 4)
+        cv, bw, ctr, bl, fl = pend
+        # ROOT 只加在最外层压缩上
+        return struct.pack("<8I", *_compress(cv, bw, ctr, bl, fl | 8)[0:8]).hex()
+
+def blake3_hex(data):
+    h = _B3(); h.update(data); return h.hexdigest()
+
+def cf_hash(data, path):
+    """Cloudflare Pages 资源哈希：blake3(base64(内容) + 扩展名[无点]).hex()[:32]"""
+    ext = os.path.splitext(path)[1][1:]
+    b64 = base64.b64encode(data)
+    return blake3_hex(b64 + ext.encode("ascii"))[:32]
+
+# ---------------- HTTP ----------------
+def api(url, token=None, jwt=None, data=None, ctype=None, method=None, timeout=90):
+    headers = {}
+    if token: headers["Authorization"] = "Bearer " + token
+    if jwt:   headers["Authorization"] = "Bearer " + jwt
+    if ctype: headers["Content-Type"] = ctype
+    req = urllib.request.Request(url, data=data, headers=headers,
+                                 method=method or ("POST" if data is not None else "GET"))
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return json.loads(r.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        try:
+            body = json.loads(e.read().decode("utf-8"))
+        except Exception:
+            body = {}
+        errs = body.get("errors")
+        msg = "; ".join(str(x.get("message", x)) if isinstance(x, dict) else str(x) for x in errs) if isinstance(errs, list) else json.dumps(body, ensure_ascii=False)[:300]
+        raise SystemExit("[x] API 错误 %s: %s" % (e.code, msg))
+    except urllib.error.URLError as e:
+        raise SystemExit("[x] 网络错误：%s（检查网络/代理后重试）" % e.reason)
+
+def multipart(fields):
+    boundary = "----xhsDeploy" + uuid.uuid4().hex
+    body = b""
+    for name, value in fields:
+        body += ('--%s\r\nContent-Disposition: form-data; name="%s"\r\n\r\n%s\r\n' % (boundary, name, value)).encode("utf-8")
+    body += ("--%s--\r\n" % boundary).encode("utf-8")
+    return body, "multipart/form-data; boundary=" + boundary
+
+MIME = {".html":"text/html",".htm":"text/html",".js":"application/javascript",".mjs":"application/javascript",
+        ".json":"application/json",".css":"text/css",".txt":"text/plain",".svg":"image/svg+xml",
+        ".png":"image/png",".jpg":"image/jpeg",".jpeg":"image/jpeg",".gif":"image/gif",".webp":"image/webp",
+        ".ico":"image/x-icon",".woff":"font/woff",".woff2":"font/woff2",".ttf":"font/ttf",".map":"application/json"}
+
+# ---------------- 主流程 ----------------
+def main():
+    if not os.path.exists(CFG_PATH):
+        raise SystemExit("[x] 找不到 _deploy_config.json（请把脚本和部署文件放在同一目录）")
+    with open(CFG_PATH, "r", encoding="utf-8") as f:
+        cfg = json.load(f)
+    base = (cfg.get("api_base") or DEFAULT_API).rstrip("/")
+    account = cfg.get("account_id") or input("请输入 Cloudflare Account ID: ").strip()
+    project = cfg.get("project") or input("请输入 Pages 项目名: ").strip()
+    branch = cfg.get("branch") or "main"
+    token = cfg.get("api_token")
+    if not token:
+        token = input("请输入 Cloudflare API Token（输入时不回显内容也无所谓，回车确认）: ").strip()
+    names = cfg.get("files") or []
+    if not names:
+        raise SystemExit("[x] 配置里没有文件清单（files 为空）")
+
+    print("=" * 46)
+    print(" Cloudflare Pages 一键部署 · v%s" % cfg.get("version", "?"))
+    print(" 项目: %s   分支: %s" % (project, branch))
+    print("=" * 46)
+
+    # 0. 自检 BLAKE3
+    assert blake3_hex(b"") == "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262", "BLAKE3 自检失败"
+    assert blake3_hex(b"abc") == "6437b3ac38465133ffb63b75273a8db548c558465d79db03fd359c6cd5bd9d85", "BLAKE3 自检失败"
+
+    # 1. 读取文件并计算哈希
+    entries = []
+    for name in names:
+        p = os.path.join(HERE, name)
+        if not os.path.exists(p):
+            raise SystemExit("[x] 缺少文件：%s（请把所有文件放在同一目录）" % name)
+        with open(p, "rb") as f:
+            data = f.read()
+        key = cf_hash(data, name)
+        ctype = MIME.get(os.path.splitext(name)[1].lower(), "application/octet-stream")
+        entries.append({"name": name, "key": key,
+                        "b64": base64.b64encode(data).decode("ascii"), "ctype": ctype})
+        print("  · %-24s %8.1f KB" % (name, len(data) / 1024))
+
+    # 2. 换取上传 JWT
+    print("(1/4) 获取上传凭证 …")
+    t = api(base + "/accounts/%s/pages/projects/%s/upload-token" % (account, project), token=token)
+    jwt = (t.get("result") or {}).get("jwt") or t.get("jwt")
+    if not jwt:
+        raise SystemExit("[x] 获取上传凭证失败：%s" % json.dumps(t, ensure_ascii=False)[:300])
+
+    # 3. 上传资源
+    print("(2/4) 上传 %d 个文件 …" % len(entries))
+    payload = [{"key": e["key"], "value": e["b64"], "metadata": {"contentType": e["ctype"]}, "base64": True} for e in entries]
+    api(base + "/pages/assets/upload", jwt=jwt, data=json.dumps(payload).encode("utf-8"), ctype="application/json")
+    print("      上传完成")
+
+    # 4. 登记哈希（失败不影响部署）
+    print("(3/4) 登记哈希 …")
+    try:
+        api(base + "/pages/assets/upsert-hashes", jwt=jwt,
+            data=json.dumps({"hashes": [e["key"] for e in entries]}).encode("utf-8"), ctype="application/json")
+    except SystemExit:
+        print("      哈希登记失败（仅影响下次增量上传速度，不影响本次部署）")
+
+    # 5. 创建部署
+    print("(4/4) 创建部署 …")
+    manifest = dict([("/" + e["name"], e["key"]) for e in entries])
+    body, ctype = multipart([("manifest", json.dumps(manifest, separators=(",", ":"))),
+                             ("branch", branch)])
+    d = api(base + "/accounts/%s/pages/projects/%s/deployments" % (account, project),
+            token=token, data=body, ctype=ctype)
+    res = d.get("result") or {}
+    dep_url = res.get("url") or ""
+    dep_id = res.get("id") or ""
+    print("      部署已创建：%s" % (dep_url or dep_id))
+
+    # 6. 等待上线
+    ok = False
+    for i in range(12):
+        time.sleep(5)
+        try:
+            st = api(base + "/accounts/%s/pages/projects/%s/deployments/%s" % (account, project, dep_id), token=token)
+            r = st.get("result") or {}
+            stage = r.get("latest_stage") or {}
+            fc = r.get("file_count")
+            print("      … %s/%s%s" % (stage.get("name", ""), stage.get("status", ""),
+                                       ("  files=%s" % fc) if fc is not None else ""))
+            if stage.get("name") == "deploy" and stage.get("status") == "success":
+                ok = True
+                if fc == 0:
+                    print("[!] 注意：file_count=0，请到 dashboard 检查")
+                break
+            if stage.get("status") in ("failure", "canceled"):
+                raise SystemExit("[x] 部署失败：%s" % json.dumps(stage, ensure_ascii=False))
+        except SystemExit:
+            raise
+        except Exception:
+            print("      … 状态查询失败，继续等待")
+    print("=" * 46)
+    if ok:
+        print(" [OK] 发布成功！")
+        print("  本次部署地址: %s" % (dep_url or "-"))
+        print("  买家访问地址: 以你平时使用的网址为准（通常是 https://%s.pages.dev）" % project)
+        print("  建议用无痕窗口验证：旧口令进不去、新口令能进。")
+    else:
+        print(" [!] 超时未确认最终状态，请到 dash.cloudflare.com 的 Deployments 查看（通常已成功）。")
+    print("=" * 46)
+
+if __name__ == "__main__":
+    try:
+        main()
+    except SystemExit as e:
+        print(e.code if isinstance(e.code, str) else "")
+        if not isinstance(e.code, str):
+            raise
+        input("\n按回车键关闭 …")
+`;
+
+document.addEventListener("DOMContentLoaded", P.init);
+</script>
+</body>
+</html>

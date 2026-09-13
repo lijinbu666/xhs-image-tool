@@ -1,0 +1,13 @@
+# 测试脚本与诊断文件（不上传）
+_*.py
+_*.png
+_*.json
+_d*.py
+
+# Python 后端（仅本地开发用，GitHub Pages 不需要）
+mockup_studio/
+
+# 系统文件
+Thumbs.db
+desktop.ini
+.DS_Store
