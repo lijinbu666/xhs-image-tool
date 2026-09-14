@@ -90,6 +90,7 @@ input.mono{font-family:Consolas,"Courier New",monospace;font-size:12px}
 label.chk{display:flex;align-items:flex-start;gap:7px;font-weight:400;font-size:12.5px;color:var(--ink2);cursor:pointer;margin-top:8px;line-height:1.5}
 label.chk input{margin:2px 0 0}
 .mode-box{border:1.5px solid var(--line);border-radius:13px;padding:14px 16px;margin-bottom:12px;background:#fdfcff}
+.mode-box.off{opacity:.55}
 .mode-box .t{font-weight:700;font-size:13.5px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .mode-box .d{color:var(--ink2);font-size:12px;margin-top:2px}
 .mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;margin-top:8px}
@@ -106,9 +107,10 @@ label.chk input{margin:2px 0 0}
 .chip .x:hover{color:var(--danger)}
 .history{margin-top:10px;font-size:12px}
 .history table{width:100%;border-collapse:collapse;margin-top:6px}
-.history th,.history td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;font-size:12px;vertical-align:top}
+.history th,.history td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;font-size:12px;vertical-align:top;white-space:nowrap}
 .history th{color:var(--ink2);font-weight:600}
-.history code{font-family:Consolas,monospace;font-size:11.5px;word-break:break-all}
+.history td:nth-child(3),.history th:nth-child(3){max-width:360px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.history code{font-family:Consolas,monospace;font-size:11.5px}
 details.man{margin-top:12px;border:1px dashed var(--line);border-radius:10px;padding:10px 14px;font-size:12.5px;color:var(--ink2)}
 details.man ol{padding-left:20px;margin:6px 0}
 details.man summary{cursor:pointer;font-weight:700;color:var(--ink2)}
@@ -124,7 +126,7 @@ details.man summary{cursor:pointer;font-weight:700;color:var(--ink2)}
     <div class="card">
       <div class="lock-icon">🔐</div>
       <h2 style="justify-content:center">发布台</h2>
-      <p class="hint" style="margin-top:6px">给「小红书配图工具」一键发布：<br><b>新口令 + 新预设模板 + 新版本号</b>，并自动完成后续更新。<br>先连上配图工具的 <b>index.html</b>，再验证你是开发者。</p>
+      <p class="hint" style="margin-top:6px">给「小红书配图工具」一键发布：<br><b>新口令 + 新预设模板</b>，只有工具本身改版时才需要升版本号。<br>先连上配图工具的 <b>index.html</b>，再验证你是开发者。</p>
 
       <div id="srcArea">
         <div id="srcAuto" class="srcfile hidden">
@@ -160,7 +162,7 @@ details.man summary{cursor:pointer;font-weight:700;color:var(--ink2)}
       <div class="logo">🔑</div>
       <div>
         <h1>发布台</h1>
-        <div class="sub">口令 + 新模板 + 版本号 一键打包发布 · 买家端自选时机更新</div>
+        <div class="sub">口令 / 新模板一键打包发布 · 仅工具改版才升版本号 · 买家端自选时机更新</div>
       </div>
     </div>
 
@@ -228,8 +230,8 @@ details.man summary{cursor:pointer;font-weight:700;color:var(--ink2)}
 
     <!-- ========== 功能二：一键发布 ========== -->
     <div class="card" id="publishCard">
-      <h2><span class="num">2</span>一键发布（口令 + 新模板 + 版本号）</h2>
-      <p class="hint">三样都可以任选：换口令、带上新预设模板（买家端预设模板库自动更新）、版本号自动 +1（买家端顶部出现更新提示条，自选时机刷新）。点一次按钮，后续全部自动完成。</p>
+      <h2><span class="num">2</span>一键发布（口令 / 新模板 / 版本升级）</h2>
+      <p class="hint">可以任选：换口令、带上新预设模板（买家端预设模板库自动更新）。版本号默认自动 +1（买家端顶部出现更新提示条，自选时机刷新）；<b>如果这次只换口令或模板、工具本身没改，可取消下方「升级版本号」：不升版、不生成版本文件、也不需要推送 GitHub</b>。</p>
 
       <label>新用户口令（留空＝不换）</label>
       <div class="pwd-input-wrap">
@@ -250,6 +252,8 @@ details.man summary{cursor:pointer;font-weight:700;color:var(--ink2)}
         <button class="mini hidden" id="packClear" onclick="P.clearPack()">✕ 移除</button>
       </div>
       <div class="small" style="margin-top:4px">文件来自配图工具管理后台的「📦 导出全部预设模板 JSON」。发布后买家端会在下次打开时<b>整库替换</b>预设模板（自定义模板不受影响）。</div>
+
+      <label class="chk" style="margin-top:10px"><input type="checkbox" id="bumpChk" checked onchange="P.syncBump()"> ⬆️ <span><b>同步升级版本号</b>（改了工具界面/功能才需要；仅换口令或模板时取消勾选 —— 买家端不弹更新提示、不生成 version 文件、无需推送 GitHub，新内容随下次工具改版一并上线）</span></label>
 
       <label class="mt">🗂 发布文件清单（自动组装）</label>
       <div class="files-chips" id="fileChips"></div>
@@ -283,22 +287,20 @@ details.man summary{cursor:pointer;font-weight:700;color:var(--ink2)}
         </div>
       </div>
 
-      <div class="mode-box">
-        <div class="t"><input type="checkbox" id="modeCf" checked> 🚀 生成 Cloudflare 一键部署脚本 <span class="pill info">给买家在线用的选这个</span></div>
-        <div class="d">发布时自动在工具文件夹生成 <code>一键发布.bat</code>，双击它即自动部署到 Cloudflare Pages（约 1 分钟），买家端随后出现「工具已更新」提示条。<br>
-        <b>为什么不能网页直接部署？</b>浏览器安全策略（CORS）禁止网页直连 api.cloudflare.com（已实测无跨域许可），所以用本机脚本自动完成，口令只存你自己的电脑。</div>
+      <div class="mode-box" id="ghBox">
+        <div class="t"><input type="checkbox" id="modeGh" checked> 🐙 生成 GitHub 一键推送脚本 <span class="pill info">给买家在线用的选这个（你的网站在 GitHub Pages）</span></div>
+        <div class="d">发布时自动在工具文件夹生成 <code>_git_push.bat</code>，双击它即自动完成 <code>git add · commit · push</code>，约 1 分钟后 GitHub Pages 自动生效，买家端随后出现「工具已更新」提示条。<br>
+        前提：电脑已安装 <b>Git</b>（git-scm.com），且工具文件夹是从你的仓库 <b>clone</b> 下来的；本机 Git 登录过 GitHub 即可，<b>不需要 Token</b>。</div>
         <div class="mode-grid">
-          <label class="f">Account ID（dash.cloudflare.com 右侧）<input type="text" id="cfAccount" class="mono" placeholder="32 位十六进制" oninput="P.saveCfg()"></label>
-          <label class="f">Pages 项目名（访问地址前缀）<input type="text" id="cfProject" class="mono" placeholder="例如 my-image-tool" oninput="P.saveCfg()"></label>
-          <label class="f">API Token（需 Cloudflare Pages「编辑」权限）<input type="password" id="cfToken" class="mono" placeholder="粘贴后仅保存在本机" oninput="P.saveCfg()"><span class="small">留空则运行脚本时会询问一次</span></label>
-          <label class="f">生产分支<input type="text" id="cfBranch" class="mono" placeholder="main" value="main" oninput="P.saveCfg()"></label>
-          <label class="chk full"><input type="checkbox" id="cfRemember" checked onchange="P.saveCfg()"> 在本机记住以上发布配置（含 API Token，明文存本机浏览器存储，公用电脑不要勾）</label>
+          <label class="f full">仓库地址（文件夹已绑定 origin 时会自动沿用）<input type="text" id="ghRemote" class="mono" value="https://github.com/lijinbu666/xhs-image-tool.git" oninput="P.saveCfg()"></label>
+          <label class="f full">提交信息（可选，留空用默认）<input type="text" id="ghMsg" placeholder="默认：发布 vX（口令/模板更新）" oninput="P.saveCfg()"></label>
         </div>
+        <div class="small hidden" id="ghSilent" style="margin-top:6px;color:var(--warn)">仅更新口令/模板且不升级版本号时无需推送 GitHub，已自动取消勾选。</div>
       </div>
 
       <div class="mode-box">
         <div class="t"><input type="checkbox" id="modeZip"> 📦 同时下载 ZIP 部署包（备用）</div>
-        <div class="d">包含改好的全部文件 + 一键部署脚本，解压后也能手动上传 Cloudflare 或拷给别人。</div>
+        <div class="d">包含改好的全部文件（勾选上方时含 <code>_git_push.bat</code>），解压后可双击脚本推送、覆盖本地文件夹，或留档备用。</div>
       </div>
     </div>
 
@@ -312,7 +314,7 @@ details.man summary{cursor:pointer;font-weight:700;color:var(--ink2)}
           <b style="font-size:13px">发布记录</b>
           <button class="mini" onclick="P.clearHistory()">清空记录</button>
         </div>
-        <table><thead><tr><th style="width:130px">时间</th><th style="width:82px">类型</th><th>内容</th><th style="width:78px">版本</th><th style="width:120px">生效方式</th></tr></thead><tbody id="historyTbody"></tbody></table>
+        <table><thead><tr><th style="width:140px">时间</th><th style="width:96px">类型</th><th>内容</th><th style="width:110px">版本</th><th style="width:150px">生效方式</th></tr></thead><tbody id="historyTbody"></tbody></table>
       </div>
     </div>
 
@@ -321,13 +323,13 @@ details.man summary{cursor:pointer;font-weight:700;color:var(--ink2)}
       <h2><span class="num">5</span>发布后会发生什么</h2>
       <ol style="padding-left:20px;font-size:13px;color:var(--ink2);margin:6px 0">
         <li><b>本地使用者</b>：文件已自动写回工具文件夹，重新打开 index.html，旧口令被拒绝、新口令能进，即成功。</li>
-        <li><b>Cloudflare 使用者</b>：双击生成的 <code>一键发布.bat</code> → 看到「✓ 发布成功」→ 用无痕窗口打开买家网址验证。</li>
-        <li><b>买家端</b>：下次打开工具时顶部出现「工具已更新 v新版本」提示条，点「立即刷新」自选时机升级；若本次带了新预设模板，刷新后预设模板库自动替换为新模板（自定义模板保留）。</li>
+        <li><b>GitHub Pages 在线版</b>：双击生成的 <code>_git_push.bat</code> → 看到「[OK] 已推送」→ 等约 1 分钟 → 用无痕窗口打开买家网址验证。</li>
+        <li><b>买家端</b>：升级版本号时，下次打开工具顶部出现「工具已更新 v新版本」提示条，点「立即刷新」自选时机升级；若本次带了新预设模板，刷新后预设模板库自动替换为新模板（自定义模板保留）。若未升级版本号（仅换口令/模板），买家端不弹任何提示，新内容随下次工具改版一并上线。</li>
       </ol>
       <details class="man">
         <summary>手动部署（备用，一般用不到）</summary>
-        <p class="mt"><b>情况 A · 自己电脑双击用：</b>把生成的文件（或 ZIP 解压出来的 index.html、version.js 等）覆盖到工具文件夹，注意备份旧文件。</p>
-        <p class="mt"><b>情况 B · Cloudflare Pages 在线用：</b>登录 dash.cloudflare.com → Workers 和 Pages → 你的项目 → Deployments → Create deployment → Direct Upload，把 ZIP 解压出的 <b>index.html、version.js、update_log.js</b> 等拖进上传区（根目录）→ Deploy site。或者：Pages 连了 Git 的话，把文件覆盖进仓库提交推送即可。</p>
+        <p class="mt"><b>情况 A · 自己电脑双击用：</b>把生成的文件（或 ZIP 解压出来的 index.html 等）覆盖到工具文件夹，注意备份旧文件。</p>
+        <p class="mt"><b>情况 B · GitHub Pages 在线用：</b>方式一（推荐）：双击解压出的 <code>_git_push.bat</code> 自动推送。方式二（网页上传）：打开仓库 <b>github.com/lijinbu666/xhs-image-tool</b> → Add file → Upload files，把 <b>index.html、version.js、update_log.js</b> 等拖入 → Commit changes，约 1 分钟后 Pages 自动生效。</p>
         <p class="mt"><b>回退：</b>重新用本工具发布一次旧口令即可；每次发布前状态栏都显示当前哈希，可对照确认。</p>
       </details>
     </div>
@@ -417,19 +419,18 @@ P.ingestExtra = function(name, buf){
 };
 
 P.init = async function(){
-  // 发布配置回填
+  // 发布配置回填（GitHub 仓库地址 / 提交信息，仅存本机）
   try{
     const cfg=JSON.parse(localStorage.getItem("xhs_pubtool_cfg")||"null");
     if(cfg){
-      $("#cfAccount").value=cfg.account||""; $("#cfProject").value=cfg.project||"";
-      $("#cfBranch").value=cfg.branch||"main";
-      if(cfg.remember){ $("#cfToken").value=cfg.token||""; $("#cfRemember").checked=true; }
-      else $("#cfRemember").checked=false;
+      if(cfg.remote) $("#ghRemote").value=cfg.remote;
+      if(cfg.msg) $("#ghMsg").value=cfg.msg;
     }
   }catch(e){}
   $("#modeDir").addEventListener("change",P.refreshPreview);
-  $("#modeCf").addEventListener("change",P.refreshPreview);
+  $("#modeGh").addEventListener("change",P.refreshPreview);
   $("#modeZip").addEventListener("change",P.refreshPreview);
+  P.syncBump();
   // 记住的文件夹
   if(window.showDirectoryPicker){
     try{
@@ -553,7 +554,7 @@ P.renderFiles = function(){
     return `<span class="chip"><b title="${P.esc(n)}">${P.esc(n)}</b><span class="small">${size} KB</span>${n==="index.html"?'<span class="pill ok">主文件</span>':`<button class="x" title="移除" onclick="P.removeFile('${P.esc(n)}')">✕</button>`}</span>`;
   });
   if(P.state.src && !P.state.files["version.js"]){
-    chips.push(`<span class="chip"><span class="small">未提供 version.js：发布时将自动创建（版本号取自 index.html）</span></span>`);
+    chips.push(`<span class="chip"><span class="small">未提供 version.js：勾选升级版本号时将自动创建（版本号取自 index.html）</span></span>`);
   }
   const host=$("#fileChips");
   if(host) host.innerHTML=chips.join("") || '<span class="small">尚未连接 index.html</span>';
@@ -659,10 +660,20 @@ P.bumpVer = v => {
 };
 
 // ---------- 预览 ----------
+// 「升级版本号」开关联动：取消时推送 GitHub 无意义，自动取消并禁用 GitHub 卡
+P.syncBump = function(){
+  const bump=$("#bumpChk").checked;
+  const gh=$("#modeGh");
+  gh.disabled=!bump;
+  if(!bump) gh.checked=false;
+  $("#ghBox").classList.toggle("off",!bump);
+  $("#ghSilent").classList.toggle("hidden",bump);
+  if($("#previewLines")) P.refreshPreview();
+};
 P.modeDesc = function(){
   const parts=[];
   if($("#modeDir").checked) parts.push(P.state.dirHandle?`写入文件夹「${P.state.dirHandle.name}」`:"写入文件夹（未选择，会临时询问）");
-  if($("#modeCf").checked) parts.push("生成 Cloudflare 一键部署脚本");
+  if($("#modeGh").checked) parts.push("生成 GitHub 一键推送脚本");
   if($("#modeZip").checked) parts.push("下载 ZIP 部署包");
   return parts.length?parts.join(" + "):"仅生成文件（ZIP 备用）";
 };
@@ -684,8 +695,12 @@ P.refreshPreview = async function(){
   }else{
     html += `<div class="line"><span class="k">预设模板</span><span><span class="pill info">无变更</span></span></div>`;
   }
-  const cur=P.curVersion();
-  html += `<div class="line"><span class="k">版本号</span><span><code>v${P.esc(cur)}</code> → <code>v${P.esc(P.bumpVer(cur))}</code> <span class="pill ok">自动 +1</span> <span class="small">买家端出现更新提示条，自选时机刷新</span></span></div>`;
+  const cur=P.curVersion(), bump=$("#bumpChk").checked;
+  if(bump){
+    html += `<div class="line"><span class="k">版本号</span><span><code>v${P.esc(cur)}</code> → <code>v${P.esc(P.bumpVer(cur))}</code> <span class="pill ok">自动 +1</span> <span class="small">买家端出现更新提示条，自选时机刷新</span></span></div>`;
+  }else{
+    html += `<div class="line"><span class="k">版本号</span><span><code>v${P.esc(cur)}</code> <span class="pill warn">保持不变</span> <span class="small">仅更新口令/模板：不生成 version 文件、无需推送 GitHub，随下次改版一并上线</span></span></div>`;
+  }
   $("#previewLines").innerHTML=html;
   $("#modeSummary").textContent=P.modeDesc();
 };
@@ -751,18 +766,14 @@ P.usePwd = function(kind){
   P.toast(kind==="user"?"新用户口令已带入第 2 步":"新管理口令已带入第 2 步");
 };
 
-// ---------- 发布配置 ----------
+// ---------- 发布配置（GitHub 仓库地址 / 提交信息，仅存本机，无任何 Token） ----------
 P.saveCfg = function(){
   try{
-    const remember=$("#cfRemember").checked;
     const cfg={
-      account:$("#cfAccount").value.trim(), project:$("#cfProject").value.trim(),
-      branch:$("#cfBranch").value.trim()||"main",
-      token: remember?$("#cfToken").value.trim():"",
-      remember
+      remote:$("#ghRemote").value.trim(),
+      msg:$("#ghMsg").value.trim()
     };
     localStorage.setItem("xhs_pubtool_cfg", JSON.stringify(cfg));
-    if(!remember) $("#cfToken").value="";
   }catch(e){}
 };
 
@@ -787,7 +798,8 @@ P.apply = async function(){
   if(!P.state.src){ P.toast("请先连接 index.html"); return; }
   const nu=$("#applyUser").value, na=$("#applyAdmin").value;
   const usePack=!!P.state.pack;
-  const curVer=P.curVersion(), newVer=P.bumpVer(curVer);
+  const bump=$("#bumpChk").checked;
+  const curVer=P.curVersion(), newVer=bump?P.bumpVer(curVer):curVer;
   if(!nu && !na && !usePack){ P.toast("没有要发布的变更（口令、模板都未填写）"); return; }
 
   // 校验与提醒
@@ -807,18 +819,20 @@ P.apply = async function(){
   if(nu) tasks.push("用户口令");
   if(na) tasks.push("管理口令");
   if(usePack) tasks.push(`新预设模板 ${okN} 套（买家端整库更新）`);
-  tasks.push(`版本号 v${curVer} → v${newVer}`);
+  tasks.push(bump
+    ? `版本号 v${curVer} → v${newVer}`
+    : `版本号保持 v${curVer} 不变（静默更新：不生成 version 文件、不推送 GitHub）`);
   const modes=[];
-  const wantDir=$("#modeDir").checked, wantCf=$("#modeCf").checked, wantZip=$("#modeZip").checked;
+  const wantDir=$("#modeDir").checked, wantGh=bump&&$("#modeGh").checked, wantZip=$("#modeZip").checked;
   if(wantDir) modes.push("写入文件夹");
-  if(wantCf) modes.push("CF一键部署脚本");
+  if(wantGh) modes.push("Git一键推送脚本");
   if(wantZip) modes.push("ZIP");
   if(!modes.length){ if(!confirm("未勾选任何生效方式，将仅下载 ZIP 部署包。继续吗？")) return; modes.push("ZIP"); }
   if(!confirm(`即将发布：\n· ${tasks.join("\n· ")}\n\n生效方式：${modes.join(" + ")}\n\n点「确定」开始（原文件不会被改动）。`)) return;
 
   const btn=$("#applyBtn"); btn.disabled=true;
   try{
-    P.log("开始生成新版本 …");
+    P.log("开始生成发布文件 …");
     let src=P.state.src;
 
     // 1. 口令
@@ -839,7 +853,7 @@ P.apply = async function(){
       P.log("管理口令哈希已替换 ✓","ok");
     }
 
-    // 2. 模板包换代
+    // 2. 模板包换代（换代值照常 +1：index.html 内容变了，但版本号可以不变）
     let newReset=null;
     if(usePack){
       const mr=src.match(RE_RESET);
@@ -855,26 +869,32 @@ P.apply = async function(){
       P.log(`预设模板包已嵌入（${okN} 套，换代值 ${mr[1]} → ${newReset}）✓`,"ok");
     }
 
-    // 3. 版本号
-    const tv=(src.match(OCC_TOOL)||[]).length;
-    if(tv>1) throw new Error(`TOOL_VERSION 匹配异常（${tv} 处），已中止`);
-    src=src.replace(RE_TOOL_VER, ()=>`const TOOL_VERSION = "${newVer}"`);
-    P.log(`版本号 v${curVer} → v${newVer} ✓`,"ok");
+    // 3. 版本号（仅在勾选升级时改写）
+    if(bump){
+      const tv=(src.match(OCC_TOOL)||[]).length;
+      if(tv>1) throw new Error(`TOOL_VERSION 匹配异常（${tv} 处），已中止`);
+      src=src.replace(RE_TOOL_VER, ()=>`const TOOL_VERSION = "${newVer}"`);
+      P.log(`版本号 v${curVer} → v${newVer} ✓`,"ok");
+    }else{
+      P.log(`按选择保持版本号 v${curVer} 不变（静默更新，不推送 GitHub）`,"warn");
+    }
 
-    // 4. version.js / version.json
+    // 4. 组装文件：升级时才带 version.js / version.json；不升级则一律不含，买家端无版本变化
     const files={};
     files["index.html"]=enc.encode(src);
-    let vjs=P.state.files["version.js"] && P.state.files["version.js"].text;
-    if(vjs){
-      if(!RE_REMOTE.test(vjs)) throw new Error("version.js 内容异常（没有 REMOTE_VERSION），已中止");
-      vjs=vjs.replace(RE_REMOTE, ()=>`window.REMOTE_VERSION = "${newVer}"`);
-    }else{
-      vjs=`// 版本提示条配置：每次发布自动 +1。买家旧页面检测到版本升高，显示「工具已更新」提示条，点击才刷新，不打断使用。\nwindow.REMOTE_VERSION = "${newVer}";\n`;
-      P.log("version.js 原先缺失，已自动创建","warn");
+    if(bump){
+      let vjs=P.state.files["version.js"] && P.state.files["version.js"].text;
+      if(vjs){
+        if(!RE_REMOTE.test(vjs)) throw new Error("version.js 内容异常（没有 REMOTE_VERSION），已中止");
+        vjs=vjs.replace(RE_REMOTE, ()=>`window.REMOTE_VERSION = "${newVer}"`);
+      }else{
+        vjs=`// 版本提示条配置：每次发布自动 +1。买家旧页面检测到版本升高，显示「工具已更新」提示条，点击才刷新，不打断使用。\nwindow.REMOTE_VERSION = "${newVer}";\n`;
+        P.log("version.js 原先缺失，已自动创建","warn");
+      }
+      files["version.js"]=enc.encode(vjs);
+      const vjson=P.state.files["version.json"] && P.state.files["version.json"].text;
+      if(vjson) files["version.json"]=enc.encode(vjson.replace(/("version"\s*:\s*")[^"]*(")/, `$1${newVer}$2`));
     }
-    files["version.js"]=enc.encode(vjs);
-    const vjson=P.state.files["version.json"] && P.state.files["version.json"].text;
-    if(vjson) files["version.json"]=enc.encode(vjson.replace(/("version"\s*:\s*")[^"]*(")/, `$1${newVer}$2`));
 
     // 5. 其余文件原样带上
     for(const [name,f] of Object.entries(P.state.files)){
@@ -888,37 +908,43 @@ P.apply = async function(){
     if(P.state.oldUser && nu && src.includes(P.state.oldUser)) throw new Error("自检失败：旧用户哈希仍残留");
     if(P.state.oldAdmin && na && src.includes(P.state.oldAdmin)) throw new Error("自检失败：旧管理哈希仍残留");
     if(usePack && !src.includes("XHS_EMBED_TPL_PACK")) throw new Error("自检失败：模板包未写入");
-    if(!src.includes(`const TOOL_VERSION = "${newVer}"`)) throw new Error("自检失败：版本号未写入");
+    if(bump){
+      if(!src.includes(`const TOOL_VERSION = "${newVer}"`)) throw new Error("自检失败：版本号未写入");
+    }else{
+      if(!src.includes(`const TOOL_VERSION = "${curVer}"`)) throw new Error("自检失败：版本号应保持不变却被改动");
+    }
     if(!src.includes("</html>") || !src.includes("小红书配图")) throw new Error("自检失败：文件结构异常，已中止");
     P.log("自检通过 ✓","ok");
 
     // 6. 生效方式
     const result=[];
     P.state.patched=files;
-    const helper=wantCf?P.buildHelpers(newVer, Object.keys(files)):null;
+    const helper=wantGh?{bat:P.buildGitBat(newVer,bump)}:null;
 
     let dirWritten=false;
     if(wantDir && P.state.dirHandle){
       try{
         const toWrite=Object.assign({}, files);
-        if(helper){ toWrite["一键发布.bat"]=helper.bat; toWrite["_deploy.py"]=helper.py; toWrite["_deploy_config.json"]=helper.cfg; }
+        if(helper){ toWrite["_git_push.bat"]=helper.bat; }
         const written=await P.writeAll(toWrite);
         P.log(`已写入 ${written.length} 个文件到「${P.state.dirHandle.name}」✓`,"ok");
         result.push({ok:true, txt:`本地文件夹「${P.state.dirHandle.name}」已更新（${written.length} 个文件）`});
-        if(helper) result.push({ok:true, txt:"Cloudflare 一键部署脚本已生成：双击工具文件夹里的「一键发布.bat」完成线上发布"});
+        if(helper) result.push({ok:true, txt:"GitHub 一键推送脚本已生成：双击工具文件夹里的「_git_push.bat」推送到 GitHub Pages"});
         dirWritten=true;
       }catch(e){
         P.log("写入文件夹失败："+e.message+"，改为 ZIP 兜底","err");
         result.push({ok:false, txt:`写入文件夹失败：${e.message}`});
       }
     }
+    const zipOpt={ver:newVer, bump};
     if(!dirWritten){
-      await P.downloadZip(files, helper, newVer);
+      await P.downloadZip(files, helper, zipOpt);
       result.push({ok:true, txt:helper
-        ?"ZIP 部署包已下载（含「一键发布.bat」，解压后双击即可部署 Cloudflare）"
-        :"ZIP 部署包已下载（解压后覆盖到工具文件夹即可）"});
+        ?"ZIP 部署包已下载（含「_git_push.bat」，解压后双击即可推送到 GitHub Pages）"
+        :(bump?"ZIP 部署包已下载（解压后覆盖到工具文件夹即可）"
+               :"ZIP 更新包已下载（仅口令/模板变更，解压覆盖即可，版本号不变）")});
     }else if(wantZip){
-      await P.downloadZip(files, helper, newVer);
+      await P.downloadZip(files, helper, zipOpt);
       result.push({ok:true, txt:"ZIP 部署包已下载（备用）"});
     }
 
@@ -927,8 +953,10 @@ P.apply = async function(){
     if(nu) items.push({t:"用户口令", v:$("#rememberChk").checked?nu:"（未保存明文）"});
     if(na) items.push({t:"管理口令", v:$("#rememberChk").checked?na:"（未保存明文）"});
     if(usePack) items.push({t:"预设模板", v:`${P.state.packName}（${okN} 套，换代 ${newReset}）`});
-    items.push({t:"版本号", v:`v${curVer} → v${newVer}`});
-    P.addHistory(items, `v${newVer}`, modes.join("+"));
+    items.push(bump
+      ? {t:"版本号", v:`v${curVer} → v${newVer}`}
+      : {t:"版本号", v:`v${curVer} 保持不变（未推送）`});
+    P.addHistory(items, bump?`v${newVer}`:`v${curVer}·不变`, modes.join("+"));
 
     $("#curUserShort").textContent=P.short(nu?await P.sha256(nu):P.state.oldUser);
     $("#curAdminShort").textContent=P.short(na?await P.sha256(na):P.state.oldAdmin);
@@ -941,12 +969,15 @@ P.apply = async function(){
     P.refreshPreview();
 
     // 结果面板
-    const cfFirst=result.find(r=>r.txt.includes("一键发布.bat")||r.txt.includes("一键部署"));
     let steps="";
-    if(cfFirst) steps+=`<li>双击工具文件夹里的 <b>一键发布.bat</b>（需要本机装有 Python；脚本纯标准库、无第三方依赖，Token 只存在你电脑上）。</li><li>看到「[OK] 发布成功」后，用无痕窗口打开买家网址验证：旧口令进不去、新口令能进。</li>`;
+    if(wantGh) steps+=`<li>双击工具文件夹里的 <b>_git_push.bat</b>（需本机已装 Git、文件夹是 clone 的仓库；无需 Token）。</li><li>看到「[OK] 已推送」后等约 1 分钟，用无痕窗口打开买家网址验证：旧口令进不去、新口令能进。</li>`;
     if(dirWritten) steps+=`<li>本地已生效：重新打开 index.html 即用新口令${usePack?"与新模板库":""}。</li>`;
-    steps+=`<li>买家端下次打开时顶部出现「工具已更新 v${newVer}」提示条，点「立即刷新」自选时机升级；刷新后${usePack?"预设模板库已自动替换为新模板":"进入新版工具"}。</li>`;
-    $("#resultBox").innerHTML=`<b>✅ 发布完成（v${P.esc(newVer)}）</b><ol>${steps}</ol>`;
+    if(bump){
+      steps+=`<li>买家端下次打开时顶部出现「工具已更新 v${P.esc(newVer)}」提示条，点「立即刷新」自选时机升级；刷新后${usePack?"预设模板库已自动替换为新模板":"进入新版工具"}。</li>`;
+    }else{
+      steps+=`<li>本次<b>未升级版本号、也未推送 GitHub</b>：买家端不会出现更新提示。新口令/模板已写入本地文件${wantZip?"和 ZIP 更新包":""}，下次工具改版发布时会一并上线。</li>`;
+    }
+    $("#resultBox").innerHTML=`<b>✅ ${bump?`发布完成（v${P.esc(newVer)}）`:`口令/模板更新已生成（版本 v${P.esc(curVer)} 不变）`}</b><ol>${steps}</ol>`;
     $("#resultBox").classList.add("show");
     P.toast("发布完成，请看下方结果提示");
   }catch(e){
@@ -957,35 +988,47 @@ P.apply = async function(){
   }
 };
 
-// ---------- 一键部署脚本生成 ----------
-P.buildHelpers = function(ver, fileNames){
-  const cfg={
-    account_id:$("#cfAccount").value.trim(),
-    project:$("#cfProject").value.trim(),
-    branch:$("#cfBranch").value.trim()||"main",
-    api_token:$("#cfToken").value.trim(),
-    files:fileNames.slice(),
-    version:ver
-  };
-  if(!cfg.account_id || !cfg.project)
-    P.log("提示：Account ID / 项目名未填全，部署脚本运行时会再要求输入","warn");
-  const cfgBytes=enc.encode(JSON.stringify(cfg,null,2));
-  const pyBytes=enc.encode(P.DEPLOY_PY);
-  const batBytes=enc.encode("@echo off\r\nchcp 65001 >nul\r\ncd /d \"%~dp0\"\r\necho ==============================================\r\necho  Deploying to Cloudflare Pages ...\r\necho ==============================================\r\nwhere py >nul 2>nul\r\nif %errorlevel%==0 (py -3 \"_deploy.py\") else (python \"_deploy.py\")\r\necho.\r\npause\r\n");
-  return {cfg:cfgBytes, py:pyBytes, bat:batBytes};
+// ---------- GitHub 一键推送脚本（_git_push.bat） ----------
+P.buildGitBat = function(ver, bump){
+  const remote=$("#ghRemote").value.trim();
+  let msg=$("#ghMsg").value.trim();
+  if(!msg) msg = bump ? `发布 v${ver}（口令/模板更新）` : "更新口令/预设模板（版本号不变）";
+  // 去掉会破坏 cmd 命令行的字符，限长
+  msg=msg.replace(/[%&"<>^|]/g,"'").replace(/\r?\n/g," ").slice(0,200);
+  const L=[];
+  L.push("@echo off");
+  L.push("chcp 65001 >nul");
+  L.push("cd /d \"%~dp0\"");
+  L.push("set \"PATH=C:\\Program Files\\Git\\cmd;C:\\Program Files\\Git\\bin;C:\\Program Files (x86)\\Git\\cmd;%PATH%\"");
+  L.push("echo ==============================================");
+  L.push("echo   GitHub push  -  xhs-image-tool");
+  L.push("echo ==============================================");
+  L.push("where git >nul 2>nul");
+  L.push("if errorlevel 1 ( echo [X] 没找到 Git，请先安装 Git for Windows: https://git-scm.com/download/win & pause & exit /b 1 )");
+  if(remote){
+    L.push(`git remote get-url origin >nul 2>nul || git remote add origin "${remote}"`);
+  }
+  L.push("git add -A");
+  L.push(`git diff --cached --quiet || git commit -m "${msg}"`);
+  L.push(remote ? "git push -u origin HEAD" : "git push");
+  L.push("echo.");
+  L.push("echo [OK] 已推送完成，约 1 分钟后 GitHub Pages 自动生效。");
+  L.push("pause");
+  return enc.encode(L.join("\r\n")+"\r\n");
 };
 
-P.downloadZip = async function(files, helper, ver){
+P.downloadZip = async function(files, helper, opt){
+  opt=opt||{};
+  const bump=opt.bump!==false, ver=opt.ver||"";
   const entries=[];
   const order=Object.keys(files).sort((a,b)=>(a==="index.html"?-1:b==="index.html"?1:a.localeCompare(b)));
   for(const n of order) entries.push({name:n, bytes:files[n]});
   if(helper){
-    entries.push({name:"一键发布.bat", bytes:helper.bat});
-    entries.push({name:"_deploy.py", bytes:helper.py});
-    entries.push({name:"_deploy_config.json", bytes:helper.cfg});
+    entries.push({name:"_git_push.bat", bytes:helper.bat});
   }
   const zip=P.zipEntries(entries);
-  await P.download(`配图工具_v${ver}.zip`, zip);
+  const zipName=bump?`配图工具_v${ver}.zip`:"配图工具_更新_口令模板.zip";
+  await P.download(zipName, zip);
   P.log(`ZIP 部署包已下载（${entries.length} 个文件）✓`,"ok");
 };
 
@@ -1078,272 +1121,6 @@ P.clearHistory = function(){
   P.state.history=[]; localStorage.removeItem("xhs_pwdtool_history");
   P.renderHistory(); P.toast("已清空");
 };
-
-// ---------- _deploy.py（纯标准库 + 内嵌 BLAKE3，Cloudflare Pages Direct Upload） ----------
-P.DEPLOY_PY = String.raw`#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""Cloudflare Pages 一键部署脚本（由发布台自动生成，纯 Python 标准库，无第三方依赖）。
-
-用法：双击同目录的 一键发布.bat（或命令行运行 python _deploy.py）。
-配置：同目录 _deploy_config.json（Account ID / 项目名 / API Token / 文件清单）。
-"""
-import base64, json, os, struct, sys, time, uuid
-import urllib.request, urllib.error
-
-try:
-    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
-except Exception:
-    pass
-
-HERE = os.path.dirname(os.path.abspath(__file__))
-CFG_PATH = os.path.join(HERE, "_deploy_config.json")
-DEFAULT_API = "https://api.cloudflare.com/client/v4"
-
-# ---------------- BLAKE3（unkeyed, 32 字节输出） ----------------
-_B3_IV = (0x6A09E667,0xBB67AE85,0x3C6EF372,0xA54FF53A,0x510E527F,0x9B05688C,0x1F83D9AB,0x5BE0CD19)
-_B3_PERM = (2,6,3,10,7,0,4,13,1,11,12,5,9,14,15,8)
-_M = 0xFFFFFFFF
-
-def _rotr(x, n):
-    return ((x >> n) | (x << (32 - n))) & _M
-
-def _g(s, a, b, c, d, mx, my):
-    s[a] = (s[a] + s[b] + mx) & _M; s[d] = _rotr(s[d] ^ s[a], 16)
-    s[c] = (s[c] + s[d]) & _M;      s[b] = _rotr(s[b] ^ s[c], 12)
-    s[a] = (s[a] + s[b] + my) & _M; s[d] = _rotr(s[d] ^ s[a], 8)
-    s[c] = (s[c] + s[d]) & _M;      s[b] = _rotr(s[b] ^ s[c], 7)
-
-def _compress(cv, block_words, counter, block_len, flags):
-    state = list(cv) + list(_B3_IV)
-    state[12] = counter & _M
-    state[13] = (counter >> 32) & _M
-    state[14] = block_len
-    state[15] = flags
-    m = list(block_words)
-    for r in range(7):
-        _g(state,0,4,8,12,m[0],m[1]);  _g(state,1,5,9,13,m[2],m[3])
-        _g(state,2,6,10,14,m[4],m[5]); _g(state,3,7,11,15,m[6],m[7])
-        _g(state,0,5,10,15,m[8],m[9]); _g(state,1,6,11,12,m[10],m[11])
-        _g(state,2,7,8,13,m[12],m[13]);_g(state,3,4,9,14,m[14],m[15])
-        if r < 6:
-            m = [m[_B3_PERM[i]] for i in range(16)]
-    out = list(state)
-    for i in range(8):
-        out[i] ^= out[i + 8]
-        out[i + 8] ^= cv[i]
-    return out
-
-class _Chunk:
-    __slots__ = ("cv", "counter", "buf", "blocks", "n")
-    def __init__(self, counter):
-        self.cv = list(_B3_IV); self.counter = counter
-        self.buf = b""; self.blocks = 0; self.n = 0
-    def update(self, data):
-        self.n += len(data)
-        while data:
-            if len(self.buf) == 64:
-                start = 1 if self.blocks == 0 else 0
-                self.cv = _compress(self.cv, list(struct.unpack("<16I", self.buf)), self.counter, 64, start)[0:8]
-                self.blocks += 1; self.buf = b""
-            take = min(64 - len(self.buf), len(data))
-            self.buf += data[:take]; data = data[take:]
-    def chain(self):
-        start = 1 if self.blocks == 0 else 0
-        buf = self.buf + b"\x00" * (64 - len(self.buf))
-        return _compress(self.cv, list(struct.unpack("<16I", buf)), self.counter, len(self.buf), start | 2)[0:8]
-
-class _B3:
-    def __init__(self):
-        self.chunk = _Chunk(0); self.stack = []; self.done = 0
-    def update(self, data):
-        while data:
-            if self.chunk.n == 1024:
-                self.done += 1
-                self._add(self.chunk.chain(), self.done)
-                self.chunk = _Chunk(self.done)
-            take = min(1024 - self.chunk.n, len(data))
-            self.chunk.update(data[:take]); data = data[take:]
-    def _add(self, cv, total):
-        while total & 1 == 0:
-            cv = self._parent(self.stack.pop(), cv, 0)
-            total >>= 1
-        self.stack.append(cv)
-    def _parent(self, left, right, extra):
-        w = struct.unpack("<16I", struct.pack("<8I", *left) + struct.pack("<8I", *right))
-        return _compress(list(_B3_IV), list(w), 0, 64, 4 | extra)[0:8]
-    def hexdigest(self):
-        ch = self.chunk
-        start = 1 if ch.blocks == 0 else 0
-        buf = ch.buf + b"\x00" * (64 - len(ch.buf))
-        # 待折叠的最终输出（先不带 ROOT 标志；送入父节点的 chaining value 必须无根）
-        pend = (ch.cv, list(struct.unpack("<16I", buf)), ch.counter, len(ch.buf), start | 2)
-        for cv in reversed(self.stack):
-            prev = _compress(*pend)[0:8]
-            w = struct.unpack("<16I", struct.pack("<8I", *cv) + struct.pack("<8I", *prev))
-            pend = (list(_B3_IV), list(w), 0, 64, 4)
-        cv, bw, ctr, bl, fl = pend
-        # ROOT 只加在最外层压缩上
-        return struct.pack("<8I", *_compress(cv, bw, ctr, bl, fl | 8)[0:8]).hex()
-
-def blake3_hex(data):
-    h = _B3(); h.update(data); return h.hexdigest()
-
-def cf_hash(data, path):
-    """Cloudflare Pages 资源哈希：blake3(base64(内容) + 扩展名[无点]).hex()[:32]"""
-    ext = os.path.splitext(path)[1][1:]
-    b64 = base64.b64encode(data)
-    return blake3_hex(b64 + ext.encode("ascii"))[:32]
-
-# ---------------- HTTP ----------------
-def api(url, token=None, jwt=None, data=None, ctype=None, method=None, timeout=90):
-    headers = {}
-    if token: headers["Authorization"] = "Bearer " + token
-    if jwt:   headers["Authorization"] = "Bearer " + jwt
-    if ctype: headers["Content-Type"] = ctype
-    req = urllib.request.Request(url, data=data, headers=headers,
-                                 method=method or ("POST" if data is not None else "GET"))
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as r:
-            return json.loads(r.read().decode("utf-8"))
-    except urllib.error.HTTPError as e:
-        try:
-            body = json.loads(e.read().decode("utf-8"))
-        except Exception:
-            body = {}
-        errs = body.get("errors")
-        msg = "; ".join(str(x.get("message", x)) if isinstance(x, dict) else str(x) for x in errs) if isinstance(errs, list) else json.dumps(body, ensure_ascii=False)[:300]
-        raise SystemExit("[x] API 错误 %s: %s" % (e.code, msg))
-    except urllib.error.URLError as e:
-        raise SystemExit("[x] 网络错误：%s（检查网络/代理后重试）" % e.reason)
-
-def multipart(fields):
-    boundary = "----xhsDeploy" + uuid.uuid4().hex
-    body = b""
-    for name, value in fields:
-        body += ('--%s\r\nContent-Disposition: form-data; name="%s"\r\n\r\n%s\r\n' % (boundary, name, value)).encode("utf-8")
-    body += ("--%s--\r\n" % boundary).encode("utf-8")
-    return body, "multipart/form-data; boundary=" + boundary
-
-MIME = {".html":"text/html",".htm":"text/html",".js":"application/javascript",".mjs":"application/javascript",
-        ".json":"application/json",".css":"text/css",".txt":"text/plain",".svg":"image/svg+xml",
-        ".png":"image/png",".jpg":"image/jpeg",".jpeg":"image/jpeg",".gif":"image/gif",".webp":"image/webp",
-        ".ico":"image/x-icon",".woff":"font/woff",".woff2":"font/woff2",".ttf":"font/ttf",".map":"application/json"}
-
-# ---------------- 主流程 ----------------
-def main():
-    if not os.path.exists(CFG_PATH):
-        raise SystemExit("[x] 找不到 _deploy_config.json（请把脚本和部署文件放在同一目录）")
-    with open(CFG_PATH, "r", encoding="utf-8") as f:
-        cfg = json.load(f)
-    base = (cfg.get("api_base") or DEFAULT_API).rstrip("/")
-    account = cfg.get("account_id") or input("请输入 Cloudflare Account ID: ").strip()
-    project = cfg.get("project") or input("请输入 Pages 项目名: ").strip()
-    branch = cfg.get("branch") or "main"
-    token = cfg.get("api_token")
-    if not token:
-        token = input("请输入 Cloudflare API Token（输入时不回显内容也无所谓，回车确认）: ").strip()
-    names = cfg.get("files") or []
-    if not names:
-        raise SystemExit("[x] 配置里没有文件清单（files 为空）")
-
-    print("=" * 46)
-    print(" Cloudflare Pages 一键部署 · v%s" % cfg.get("version", "?"))
-    print(" 项目: %s   分支: %s" % (project, branch))
-    print("=" * 46)
-
-    # 0. 自检 BLAKE3
-    assert blake3_hex(b"") == "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262", "BLAKE3 自检失败"
-    assert blake3_hex(b"abc") == "6437b3ac38465133ffb63b75273a8db548c558465d79db03fd359c6cd5bd9d85", "BLAKE3 自检失败"
-
-    # 1. 读取文件并计算哈希
-    entries = []
-    for name in names:
-        p = os.path.join(HERE, name)
-        if not os.path.exists(p):
-            raise SystemExit("[x] 缺少文件：%s（请把所有文件放在同一目录）" % name)
-        with open(p, "rb") as f:
-            data = f.read()
-        key = cf_hash(data, name)
-        ctype = MIME.get(os.path.splitext(name)[1].lower(), "application/octet-stream")
-        entries.append({"name": name, "key": key,
-                        "b64": base64.b64encode(data).decode("ascii"), "ctype": ctype})
-        print("  · %-24s %8.1f KB" % (name, len(data) / 1024))
-
-    # 2. 换取上传 JWT
-    print("(1/4) 获取上传凭证 …")
-    t = api(base + "/accounts/%s/pages/projects/%s/upload-token" % (account, project), token=token)
-    jwt = (t.get("result") or {}).get("jwt") or t.get("jwt")
-    if not jwt:
-        raise SystemExit("[x] 获取上传凭证失败：%s" % json.dumps(t, ensure_ascii=False)[:300])
-
-    # 3. 上传资源
-    print("(2/4) 上传 %d 个文件 …" % len(entries))
-    payload = [{"key": e["key"], "value": e["b64"], "metadata": {"contentType": e["ctype"]}, "base64": True} for e in entries]
-    api(base + "/pages/assets/upload", jwt=jwt, data=json.dumps(payload).encode("utf-8"), ctype="application/json")
-    print("      上传完成")
-
-    # 4. 登记哈希（失败不影响部署）
-    print("(3/4) 登记哈希 …")
-    try:
-        api(base + "/pages/assets/upsert-hashes", jwt=jwt,
-            data=json.dumps({"hashes": [e["key"] for e in entries]}).encode("utf-8"), ctype="application/json")
-    except SystemExit:
-        print("      哈希登记失败（仅影响下次增量上传速度，不影响本次部署）")
-
-    # 5. 创建部署
-    print("(4/4) 创建部署 …")
-    manifest = dict([("/" + e["name"], e["key"]) for e in entries])
-    body, ctype = multipart([("manifest", json.dumps(manifest, separators=(",", ":"))),
-                             ("branch", branch)])
-    d = api(base + "/accounts/%s/pages/projects/%s/deployments" % (account, project),
-            token=token, data=body, ctype=ctype)
-    res = d.get("result") or {}
-    dep_url = res.get("url") or ""
-    dep_id = res.get("id") or ""
-    print("      部署已创建：%s" % (dep_url or dep_id))
-
-    # 6. 等待上线
-    ok = False
-    for i in range(12):
-        time.sleep(5)
-        try:
-            st = api(base + "/accounts/%s/pages/projects/%s/deployments/%s" % (account, project, dep_id), token=token)
-            r = st.get("result") or {}
-            stage = r.get("latest_stage") or {}
-            fc = r.get("file_count")
-            print("      … %s/%s%s" % (stage.get("name", ""), stage.get("status", ""),
-                                       ("  files=%s" % fc) if fc is not None else ""))
-            if stage.get("name") == "deploy" and stage.get("status") == "success":
-                ok = True
-                if fc == 0:
-                    print("[!] 注意：file_count=0，请到 dashboard 检查")
-                break
-            if stage.get("status") in ("failure", "canceled"):
-                raise SystemExit("[x] 部署失败：%s" % json.dumps(stage, ensure_ascii=False))
-        except SystemExit:
-            raise
-        except Exception:
-            print("      … 状态查询失败，继续等待")
-    print("=" * 46)
-    if ok:
-        print(" [OK] 发布成功！")
-        print("  本次部署地址: %s" % (dep_url or "-"))
-        print("  买家访问地址: 以你平时使用的网址为准（通常是 https://%s.pages.dev）" % project)
-        print("  建议用无痕窗口验证：旧口令进不去、新口令能进。")
-    else:
-        print(" [!] 超时未确认最终状态，请到 dash.cloudflare.com 的 Deployments 查看（通常已成功）。")
-    print("=" * 46)
-
-if __name__ == "__main__":
-    try:
-        main()
-    except SystemExit as e:
-        print(e.code if isinstance(e.code, str) else "")
-        if not isinstance(e.code, str):
-            raise
-        input("\n按回车键关闭 …")
-`;
 
 document.addEventListener("DOMContentLoaded", P.init);
 </script>

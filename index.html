@@ -843,7 +843,7 @@ const CURRENT_PASSWORD_HASH = "bba1b366a8205a4ccbe8277d46e21497cf1a93d3cd40c996c
 const AUTH_SESSION_KEY = "xhs_auth_session";
 const AUTH_PERM_KEY    = "xhs_auth_perm_v1";
 const GUIDE_KEY = "xhs_guide_seen_v1";
-const TOOL_VERSION = "1.0.4";
+const TOOL_VERSION = "1.0.5";
 const REMOTE_VERSION_URL = "./version.json";
 const VERSION_SEEN_KEY = "xhs_last_version";
 const VERSION_SEEN_KEY_OLD = "xhs_seen_version_v1";
@@ -2939,13 +2939,20 @@ App.setTplZone = function(z){
 App.renderTemplates = function(){
   const grid = App.$("#tplGrid");
   const meta = App.state.tplMeta;
-  const z = App.state.tplZone||"preset";
+  const adm = !!(App.isAdmin && App.isAdmin());
+  const shelfMap = meta.shelf||{};
+  // 普通用户的预设计数只统计「已上架」（未下架）的，与下方卡片可见口径完全一致；管理员可见全部
+  const presetSeen = t => adm || shelfMap[t.id]!==false;
   // 分区 Tab 计数
-  const nPreset=App.state.templates.filter(t=>!t.is_custom).length;
+  const nPreset=App.state.templates.filter(t=>!t.is_custom && presetSeen(t)).length;
   const nCustom=App.state.customTemplates.length;
   const cnt={preset:nPreset, custom:nCustom, all:nPreset+nCustom};
+  // 普通用户且没有任何上架预设：隐藏「预设/全部」标签，自动落到「自定义」，避免出现 预设(0) 空库
+  let z = App.state.tplZone||"preset";
+  if(!adm && nPreset===0 && (z==="preset"||z==="all")){ z="custom"; App.state.tplZone="custom"; }
   App.$$("#zoneSeg button").forEach(b=>{
     b.classList.toggle("on", b.dataset.z===z);
+    b.style.display = (!adm && nPreset===0 && (b.dataset.z==="preset"||b.dataset.z==="all")) ? "none":"";
     b.innerHTML = b.dataset.z==="preset" ? `预设<span class="zcnt">${cnt.preset}</span>`
       : b.dataset.z==="custom" ? `自定义<span class="zcnt">${cnt.custom}</span>`
       : `全部<span class="zcnt">${cnt.all}</span>`;
