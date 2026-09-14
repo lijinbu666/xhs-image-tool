@@ -839,11 +839,11 @@ body.is-admin #btnTplSel{display:inline-block}
 // ---------- A1. 月度口令（SHA-256）----------
 // 换每月口令：把新口令的 sha256 替换下面哈希即可。
 // 控制台执行：crypto.subtle.digest('SHA-256',new TextEncoder().encode('新口令')).then(b=>console.log([...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')))
-const CURRENT_PASSWORD_HASH = "8c924d88408ac6e3d9edf0b13ed7e2c6a06c6ad25afc1352bb6e6d54d1d736ea"; // 默认口令：xhs@202609
+const CURRENT_PASSWORD_HASH = "bba1b366a8205a4ccbe8277d46e21497cf1a93d3cd40c996ceebdca7e570c2a4"; // 默认口令：krauic6bdacp
 const AUTH_SESSION_KEY = "xhs_auth_session";
 const AUTH_PERM_KEY    = "xhs_auth_perm_v1";
 const GUIDE_KEY = "xhs_guide_seen_v1";
-const TOOL_VERSION = "1.0.3";
+const TOOL_VERSION = "1.0.4";
 const REMOTE_VERSION_URL = "./version.json";
 const VERSION_SEEN_KEY = "xhs_last_version";
 const VERSION_SEEN_KEY_OLD = "xhs_seen_version_v1";
