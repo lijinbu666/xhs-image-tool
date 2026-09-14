@@ -93,6 +93,11 @@ input:focus,select:focus,textarea:focus{border-color:var(--brand)}
 .img-strip{display:flex;gap:7px;overflow-x:auto;padding:10px 2px 2px}
 .img-strip:empty{display:none}
 .img-thumb{position:relative;flex:0 0 64px;width:64px;height:64px;border-radius:8px;overflow:hidden;border:1px solid var(--line)}
+.pool-sec{margin-bottom:10px}
+.pool-head{font-size:12px;margin-bottom:4px;display:flex;align-items:center;gap:6px}
+.pool-badge{position:absolute;top:2px;left:2px;font-size:9px;font-weight:700;padding:1px 4px;border-radius:3px;border:none;cursor:pointer;color:#fff;line-height:1.4;z-index:2}
+.pool-badge.main{background:#ff5b7a}
+.pool-badge.normal{background:#7d8cc8}
 .img-thumb img{width:100%;height:100%;object-fit:cover;display:block}
 .img-thumb .del{position:absolute;top:2px;right:2px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;border:none;font-size:10px;line-height:18px;padding:0;display:none}
 .img-thumb:hover .del{display:block}
@@ -218,6 +223,11 @@ body.is-admin #btnTplSel{display:inline-block}
 .ed-ph.shape-ph.clipped.sel{border:1.5px dashed rgba(96,96,232,.6);background:transparent}
 .ed-ph .tag{position:absolute;top:-17px;left:0;font-size:10px;background:var(--brand);color:#fff;padding:0 5px;border-radius:3px;white-space:nowrap;display:none}
 .ed-ph.sel .tag{display:block}
+.ed-ph .tag.main-tag{background:#ff5b7a}
+.ed-ph:has(.main-tag){box-shadow:0 0 0 1.5px #ff5b7a inset}
+.mini-main{position:absolute;top:1px;left:1px;background:#ff5b7a;color:#fff;font-size:9px;line-height:1;padding:1px 3px;border-radius:2px;font-weight:700}
+.ph.main-ph{box-shadow:0 0 0 1.5px #ff5b7a inset}
+.ed-ph .main-badge{position:absolute;top:2px;left:2px;background:#ff5b7a;color:#fff;font-size:10px;font-weight:700;padding:1px 5px;border-radius:3px;line-height:1.3;z-index:3;pointer-events:none}
 .ed-ph .txt{width:100%;height:100%;display:flex;overflow:hidden;pointer-events:none}
 .ed-handle{position:absolute;width:9px;height:9px;background:#fff;border:1.5px solid var(--brand);border-radius:50%;display:none;z-index:5}
 .ed-ph.sel .ed-handle{display:block}
@@ -593,6 +603,18 @@ body.is-admin #btnTplSel{display:inline-block}
         <button onclick="App.clearAllImages()">🗑 一键清空</button>
       </div>
       <div class="card-body" style="padding-bottom:10px">
+        <label class="small" style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+          <input type="checkbox" id="presetMainChk" onchange="App.togglePresetMain(this.checked)">
+          <b>预指定主图</b>
+          <span class="small muted" style="color:#888">开启后素材分为「主图素材 / 普通素材」，主图位只填主图素材，避免主图与普通位重复</span>
+        </label>
+        <div id="poolBar" style="display:none;margin-bottom:8px">
+          <div class="seg" id="poolSeg">
+            <button data-pool="main" onclick="App.setUploadPool('main')">① 主图素材</button>
+            <button data-pool="normal" onclick="App.setUploadPool('normal')">② 普通素材</button>
+          </div>
+          <div class="small muted" id="poolHint" style="margin-top:5px">当前上传到：主图素材。主图素材只会填入模板的「主图位」。</div>
+        </div>
         <div class="dropzone" id="dropzone" onclick="document.getElementById('imgFileInput').click()">
           <div class="up">↑</div>
           拖拽图片 / PDF 到此处，或点击批量上传
@@ -843,7 +865,7 @@ const CURRENT_PASSWORD_HASH = "bba1b366a8205a4ccbe8277d46e21497cf1a93d3cd40c996c
 const AUTH_SESSION_KEY = "xhs_auth_session";
 const AUTH_PERM_KEY    = "xhs_auth_perm_v1";
 const GUIDE_KEY = "xhs_guide_seen_v1";
-const TOOL_VERSION = "1.0.5";
+const TOOL_VERSION = "1.0.6";
 const REMOTE_VERSION_URL = "./version.json";
 const VERSION_SEEN_KEY = "xhs_last_version";
 const VERSION_SEEN_KEY_OLD = "xhs_seen_version_v1";
@@ -1064,7 +1086,7 @@ App.idbImagesPutAll = async function(list){
   const db=await App.imgDb();
   await new Promise((res,rej)=>{
     const tx=db.transaction(App.IMG_STORE,"readwrite"), st=tx.objectStore(App.IMG_STORE);
-    for(const im of list){ try{ st.put({uid:im.uid,name:im.name||"",hash:im.hash||"",dataUrl:im.dataUrl||""}, im.uid); }catch(e){} }
+    for(const im of list){ try{ st.put({uid:im.uid,name:im.name||"",hash:im.hash||"",dataUrl:im.dataUrl||"",main:!!im.main}, im.uid); }catch(e){} }
     tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error); tx.onabort=()=>rej(tx.error);
   });
 };
@@ -1643,6 +1665,7 @@ App.state = {
   templates: [], customTemplates: [], presetTemplates: [],
   tplMeta: { order:[], used:{}, star:{}, defaultId:null },
   tplZone: "preset", tplFilter: "all", tplSearch: "", tplSort: "manual",
+  presetMain: false, uploadPool: "main",   // 预指定主图：素材分主图/普通两池
   manageMode: false, selectedSets: new Set(),
   tplSelMode: false, libSel: new Set(),   // 开发者：模板库多选删除
   importZone: "preset", impFiles: [],
@@ -1659,6 +1682,8 @@ App.bootAfterAuth = async function(){
   App.loadTplMeta();
   App.loadTemplates();
   await App.restoreSession();
+  try{ App.state.presetMain = localStorage.getItem(SESSION_KEY+"_presetMain")==="1"; }catch(e){}
+  App.state.uploadPool = "main";
   await Promise.allSettled(App.state.images.map(im=>im.img.complete?null:
     new Promise(r=>{im.img.onload=r;im.onerror=r;})));
   // 素材就绪后修正所有方案的图位数组（模板改版/素材失效自愈）
@@ -1739,7 +1764,7 @@ App._ingestImageFiles = async function(files){
       const r = await App.loadImageFile(f);
       const img = await new Promise(res=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=()=>res(null); i.src=r.dataUrl; });
       if(!img) throw new Error("decode fail");
-      App.state.images.push({uid:App.uid(), name:f.name, hash, dataUrl:r.dataUrl, img});
+      App.state.images.push({uid:App.uid(), name:f.name, hash, dataUrl:r.dataUrl, img, main: (App.state.presetMain && App.state.uploadPool==="main")});
       if(r.compressed) compressed++;
       added++;
       paint(false);
@@ -1915,9 +1940,14 @@ document.addEventListener("paste", e=>{
 });
 
 App._imgGridToken=0;
-App._imgThumbHTML = function(im,i){
+App._imgThumbHTML = function(im,i, poolBadge){
+  // poolBadge: 'main'|'normal'|false —— 预指定主图开启时显示池归属徽标（点击可切换）
+  const badge = poolBadge
+    ? `<button class="pool-badge ${poolBadge}" title="点击切换主图/普通素材" onclick="event.stopPropagation();App.toggleImgPool('${im.uid}')">${poolBadge==="main"?"★ 主图":"普通"}</button>`
+    : "";
   return `<div class="img-thumb" title="${App.esc(im.name)}">
       <img src="${im.dataUrl}" alt="" loading="lazy">
+      ${badge}
       <span class="uid">${i+1}</span>
       <button class="del" onclick="App.removeImage('${im.uid}')">✕</button>
     </div>`;
@@ -1926,20 +1956,66 @@ App.renderImages = function(){
   const grid=App.$("#imgGrid");
   const imgs=App.state.images;
   const token=++App._imgGridToken;
-  App.$("#imgCount").textContent = `共 ${imgs.length} 张`;
-  // 数据量大时分批渲染（先出前 48 张，其余空闲追加），避免一次性拼大串 / 解码卡顿
-  const BATCH=48;
-  if(imgs.length<=BATCH){ grid.innerHTML = imgs.map(App._imgThumbHTML).join(""); return; }
-  grid.innerHTML = imgs.slice(0,BATCH).map(App._imgThumbHTML).join("");
-  let from=BATCH;
-  const appendChunk=()=>{
-    if(token!==App._imgGridToken) return; // 已被新一轮渲染取代
-    const html=imgs.slice(from,from+BATCH).map(App._imgThumbHTML).join("");
-    grid.insertAdjacentHTML("beforeend", html);
-    from+=BATCH;
-    if(from<imgs.length) setTimeout(appendChunk, 0);
-  };
-  setTimeout(appendChunk, 0);
+  const presetMain=App.state.presetMain;
+  // 同步上传区开关/池条状态
+  const chk=App.$("#presetMainChk"); if(chk) chk.checked=presetMain;
+  const bar=App.$("#poolBar"); if(bar) bar.style.display=presetMain?"block":"none";
+  App.setUploadPool(App.state.uploadPool);
+
+  if(!presetMain){
+    App.$("#imgCount").textContent = `共 ${imgs.length} 张`;
+    const BATCH=48;
+    if(imgs.length<=BATCH){ grid.innerHTML = imgs.map((im,i)=>App._imgThumbHTML(im,i,false)).join(""); return; }
+    grid.innerHTML = imgs.slice(0,BATCH).map((im,i)=>App._imgThumbHTML(im,i,false)).join("");
+    let from=BATCH;
+    const appendChunk=()=>{
+      if(token!==App._imgGridToken) return;
+      const html=imgs.slice(from,from+BATCH).map((im,i)=>App._imgThumbHTML(im,from+i,false)).join("");
+      grid.insertAdjacentHTML("beforeend", html);
+      from+=BATCH;
+      if(from<imgs.length) setTimeout(appendChunk, 0);
+    };
+    setTimeout(appendChunk, 0);
+    return;
+  }
+
+  // 预指定主图：分两区显示
+  const mainImgs=imgs.filter(im=>im.main);
+  const regImgs=imgs.filter(im=>!im.main);
+  App.$("#imgCount").textContent = `主图 ${mainImgs.length} 张 · 普通 ${regImgs.length} 张`;
+  const sec=(title,list,pool)=>`
+    <div class="pool-sec">
+      <div class="pool-head"><b>${title}</b><span class="small muted">（${list.length} 张，点击素材角标可切换归属）</span></div>
+      <div class="img-strip">${list.map((im,i)=>App._imgThumbHTML(im,i,pool)).join("") || '<span class="small muted" style="padding:4px">暂无</span>'}</div>
+    </div>`;
+  grid.innerHTML = sec("① 主图素材", mainImgs, "main") + sec("② 普通素材", regImgs, "normal");
+};
+App.toggleImgPool = function(uid){
+  const im=App.imageByUid(uid); if(!im) return;
+  im.main = !im.main;
+  App.state.sets.forEach(s=>App.bindSetSlots(s));
+  App.renderImages(); App.renderSets(); App.saveSession();
+};
+App.togglePresetMain = function(on){
+  App.state.presetMain = !!on;
+  App.state.uploadPool = "main";
+  try{ localStorage.setItem(SESSION_KEY+"_presetMain", on?"1":"0"); }catch(e){}
+  const bar=App.$("#poolBar"); if(bar) bar.style.display = on?"block":"none";
+  App.setUploadPool("main");
+  // 切换模式后按新规则重绑所有方案
+  App.state.sets.forEach(s=>App.bindSetSlots(s));
+  App.renderImages(); App.renderSets(); App.saveSession();
+  App.toast(on?"已开启预指定主图：上传时请选择主图素材 / 普通素材":"已关闭预指定主图：所有素材统一填充");
+};
+App.setUploadPool = function(pool){
+  App.state.uploadPool = pool==="normal"?"normal":"main";
+  const seg=App.$("#poolSeg"); if(seg){
+    seg.querySelectorAll("button").forEach(b=>b.classList.toggle("on", b.dataset.pool===App.state.uploadPool));
+  }
+  const hint=App.$("#poolHint");
+  if(hint) hint.textContent = App.state.uploadPool==="main"
+    ? "当前上传到：主图素材。主图素材只会填入模板的「主图位」。"
+    : "当前上传到：普通素材。已在主图素材中的图片不会重复加入。";
 };
 
 App.removeImage = function(uid){
@@ -1976,7 +2052,7 @@ App.scheduleImagesPersist = function(delay){
 App.flushImagesPersist = function(){
   clearTimeout(App._imgPersistT);
   if(!App._compat.idb) return;
-  const copy=App.state.images.map(im=>({uid:im.uid,name:im.name,hash:im.hash,dataUrl:im.dataUrl}));
+  const copy=App.state.images.map(im=>({uid:im.uid,name:im.name,hash:im.hash,dataUrl:im.dataUrl,main:!!im.main}));
   App.idbImagesPutAll(copy).catch(e=>App.reportError("idb-put",e));
 };
 // 兼容旧调用：保存方案 + 排队持久化图片
@@ -2022,7 +2098,7 @@ App.restoreSession = async function(){
     const data = App._compat.idb ? await App.idbImagesAll() : [];
     App.state.images = (data||[]).map(im=>{
       const i = new Image(); i.src = im.dataUrl;
-      return {uid:im.uid,name:im.name,hash:im.hash,dataUrl:im.dataUrl,img:i};
+      return {uid:im.uid,name:im.name,hash:im.hash,dataUrl:im.dataUrl,img:i,main:!!im.main};
     });
   }catch(e){ App.reportError("session-restore-imgs",e); App.toast("部分素材恢复失败，可重新上传"); }
 };
@@ -2795,6 +2871,16 @@ App.canvasToJpeg = function(cv){
   });
 };
 App.tplImageCount = tpl => (((tpl&&tpl.phs)||[]).filter(p=>p.type==="img"&&!p.hidden)).length;
+// 主图位：返回「在所有图片位中的下标集合」（与 page.slots 下标一一对应）
+App.tplMainSlotIndices = tpl => {
+  const idx=[]; let ii=0;
+  (tpl&&tpl.phs||[]).forEach(ph=>{
+    if(ph.hidden) return;
+    if(ph.type==="img"){ if(ph.isMain) idx.push(ii); ii++; }
+  });
+  return idx;
+};
+App.tplMainCount = tpl => App.tplMainSlotIndices(tpl).length;
 App.timestampName = (prefix="xhs") => prefix+"-"+new Date().toISOString().replace(/[-:T]/g,"").slice(0,14);
 App.downloadBlob = function(blob,name){
   const a=document.createElement("a");
@@ -2845,7 +2931,7 @@ App.miniTplHTML = function(tpl){
       quads+=`<polygon points="${ph.corners.map(c=>`${c.x},${c.y}`).join(" ")}" fill="rgba(96,96,232,.12)" stroke="#ff3c5a" stroke-width="1" stroke-dasharray="3 2" vector-effect="non-scaling-stroke"/>`;
       return "";
     }
-    return `<div class="ph" style="${st}"></div>`;
+    return `<div class="ph${ph.isMain?" main-ph":""}" style="${st}">${ph.isMain?'<span class="mini-main">主</span>':""}</div>`;
   }).join("");
   return parts+(quads?`<svg style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none" viewBox="0 0 100 100" preserveAspectRatio="none">${quads}</svg>`:"");
 };
@@ -3251,18 +3337,38 @@ App.addToQueue = function(tpl){
   if(!App.state.sets[si]){ App.addSet(true); si=App.state.sets.length-1; }
   const s = App.state.sets[si];
   const need = App.tplImageCount(tpl);
-  // 预绑定：优先用「本方案尚未使用」的素材避免同图重复；素材不够时从头循环使用
-  // （循环下标以方案已有槽位总数为起点 → 多页/多模板间轮流分布均匀，不集中在同一张图）
   const used=new Set();
   s.pages.forEach(p=>(p.slots||[]).forEach(u=>{ if(u) used.add(u); }));
-  const pool=App.state.images.map(im=>im.uid).filter(u=>!used.has(u));
-  const all=App.state.images.map(im=>im.uid);
-  const cyc=s.pages.reduce((n,p)=>n+((p.slots||[]).length),0);
-  const slots=[];
-  let k=0;
-  for(let i=0;i<need;i++){
-    if(k<pool.length) slots.push(pool[k++]);
-    else slots.push(all.length?all[(cyc+k++)%all.length]:null);
+
+  const mainIdx = new Set(App.tplMainSlotIndices(tpl));
+  const slots=new Array(need).fill(null);
+
+  if(!App.state.presetMain){
+    // 预绑定：优先用「本方案尚未使用」的素材避免同图重复；素材不够时从头循环使用
+    const pool=App.state.images.map(im=>im.uid).filter(u=>!used.has(u));
+    const all=App.state.images.map(im=>im.uid);
+    const cyc=s.pages.reduce((n,p)=>n+((p.slots||[]).length),0);
+    let k=0;
+    for(let i=0;i<need;i++){
+      if(k<pool.length) slots[i]=pool[k++];
+      else slots[i]=all.length?all[(cyc+k++)%all.length]:null;
+    }
+  }else{
+    // 预指定主图：主图位←主图素材、普通位←普通素材，各自优先未使用、不足循环
+    const mainPool = App.state.images.filter(im=>im.main && !used.has(im.uid)).map(im=>im.uid);
+    const regPool  = App.state.images.filter(im=>!im.main && !used.has(im.uid)).map(im=>im.uid);
+    const allMain  = App.state.images.filter(im=>im.main).map(im=>im.uid);
+    const allReg   = App.state.images.filter(im=>!im.main).map(im=>im.uid);
+    let mi=0, ri=0, mLp=0, rLp=0;
+    for(let i=0;i<need;i++){
+      if(mainIdx.has(i)){
+        if(mi<mainPool.length) slots[i]=mainPool[mi++];
+        else slots[i]=allMain.length?allMain[mLp++%allMain.length]:null;
+      }else{
+        if(ri<regPool.length) slots[i]=regPool[ri++];
+        else slots[i]=allReg.length?allReg[rLp++%allReg.length]:null;
+      }
+    }
   }
   s.pages.push({tplId:tpl.id, slots, texts:{}, colors:{}});
   if(s.generated) s.dirty=true;
@@ -3339,26 +3445,64 @@ App.generateSetBtn = App.guardAsync("generateSet", async function(si){
       :`已生成 ${s.pages.length} 页配图，可以点「检查」预览了`);
   }finally{ App.hideJob(); }
 });
-// 图位按顺序绑定素材：每个素材在本方案内首次出现的绑定予以保留（视为手动/历史选择），
-// 空槽或重复绑定的槽位按顺序改配给尚未使用的素材；槽位比素材多时才从头循环。
-// 修复：素材逐步上传时早期循环造成的重复绑定，会在新素材到位后自动纠正（两张模板不再共用一张图）。
+// 图位按顺序绑定素材：
+// - 未开启「预指定主图」：所有素材统一填充，每个素材在本方案内首次出现的绑定予以保留，
+//   空槽或重复绑定的槽位按顺序改配给尚未使用的素材；槽位比素材多时才从头循环。
+// - 开启「预指定主图」：主图位只从「主图素材」取（顺序，不足循环），普通位只从「普通素材」取
+//   （同样保留首次绑定、去重、不足循环）。两池互不占用，避免主图与普通位重复。
 App.bindSetSlots = function(s){
   // 先修正 slots 长度/失效引用（模板后来增删过图位也能自愈）
   s.pages.forEach(p=>App.normalizePageSlots(p, App.tplById(p.tplId)));
-  const all=App.state.images.map(im=>im.uid);
+  const all=App.state.images;
   if(!all.length) return;
-  const N=all.length;
+
+  if(!App.state.presetMain){
+    const uids=all.map(im=>im.uid);
+    const N=uids.length;
+    const refs=[];
+    s.pages.forEach(p=>(p.slots||[]).forEach((u,i)=>refs.push({p,i,u})));
+    const seen=new Set();
+    let fresh=0;
+    refs.forEach((r,j)=>{
+      const u=r.u;
+      if(u && uids.includes(u) && !seen.has(u)){ seen.add(u); return; }
+      while(fresh<N && seen.has(uids[fresh])) fresh++;
+      if(fresh<N){ const pick=uids[fresh]; seen.add(pick); r.p.slots[r.i]=pick; fresh++; }
+      else { r.p.slots[r.i]=uids[j%N]; }
+    });
+    return;
+  }
+
+  // 预指定主图：分池填充
+  const mainUids = all.filter(im=>im.main).map(im=>im.uid);
+  const regUids  = all.filter(im=>!im.main).map(im=>im.uid);
+  const MN=mainUids.length, RN=regUids.length;
+
   const refs=[];
-  s.pages.forEach(p=>(p.slots||[]).forEach((u,i)=>refs.push({p,i,u})));
-  const seen=new Set();
-  let fresh=0;
-  refs.forEach((r,j)=>{
+  s.pages.forEach(p=>{
+    const tpl=App.tplById(p.tplId);
+    const mainIdx=new Set(App.tplMainSlotIndices(tpl));
+    (p.slots||[]).forEach((u,i)=>refs.push({p,i,u,isMain:mainIdx.has(i)}));
+  });
+
+  const seenMain=new Set(), seenReg=new Set();
+  let mFresh=0, rFresh=0;     // 各池下一个未使用素材的游标
+  let mPos=0, rPos=0;         // 各池已处理槽位数（用于循环取模）
+  refs.forEach(r=>{
     const u=r.u;
-    if(u && all.includes(u) && !seen.has(u)){ seen.add(u); return; } // 首次出现：保留
-    // 顺序寻找下一个尚未使用的素材
-    while(fresh<N && seen.has(all[fresh])) fresh++;
-    if(fresh<N){ const pick=all[fresh]; seen.add(pick); r.p.slots[r.i]=pick; fresh++; }
-    else { r.p.slots[r.i]=all[j%N]; } // 素材不够：按顺序从头循环
+    if(r.isMain){
+      if(u && mainUids.includes(u) && !seenMain.has(u)){ seenMain.add(u); mPos++; return; }
+      while(mFresh<MN && seenMain.has(mainUids[mFresh])) mFresh++;
+      if(mFresh<MN){ const pick=mainUids[mFresh]; seenMain.add(pick); r.p.slots[r.i]=pick; mFresh++; }
+      else { r.p.slots[r.i] = MN ? mainUids[mPos%MN] : null; }
+      mPos++;
+    }else{
+      if(u && regUids.includes(u) && !seenReg.has(u)){ seenReg.add(u); rPos++; return; }
+      while(rFresh<RN && seenReg.has(regUids[rFresh])) rFresh++;
+      if(rFresh<RN){ const pick=regUids[rFresh]; seenReg.add(pick); r.p.slots[r.i]=pick; rFresh++; }
+      else { r.p.slots[r.i] = RN ? regUids[rPos%RN] : null; }
+      rPos++;
+    }
   });
 };
 
@@ -3380,6 +3524,13 @@ App.renderSets = function(){
     const totalSlots=counts.reduce((a,b)=>a+b,0);
     const imgN=App.state.images.length;
     const sumText=counts.length?counts.join("+")+"图位（共"+totalSlots+"）":"0图位（共0）";
+    // 预指定主图开启时，额外显示主图位 / 主图素材 计数
+    const mainSlots=App.state.presetMain
+      ? s.pages.reduce((n,p)=>n+App.tplMainCount(App.tplById(p.tplId)),0) : 0;
+    const mainImgs=App.state.images.filter(im=>im.main).length;
+    const mainPill=App.state.presetMain
+      ? `<span class="pill" style="background:#fff0f3;color:#d6336c;border-color:#ffd0da" title="主图位仅由主图素材填充">主图位${mainSlots}/${mainImgs}</span>`
+      : "";
     let statusPill="";
     if(!s.generated) statusPill=`<span class="pill">未生成</span>`;
     else if(s.dirty) statusPill=`<span class="pill warn">已修改，重新生成</span>`;
@@ -3416,6 +3567,7 @@ App.renderSets = function(){
         <input class="set-title" id="setTitle-${si}" value="${App.esc(s.name)}" onfocus="App.setActiveSet(${si})" oninput="App.renameSets(${si})" onclick="event.stopPropagation()">
         <span class="pill">${s.pages.length}页模板</span>
         <span class="pill">${sumText}</span>
+        ${mainPill}
         <span class="pill ${totalSlots>imgN?(imgN?"warn":"danger"):""}" ${totalSlots>imgN&&imgN?`title="素材不够，生成时自动循环使用"`:""}>素材${totalSlots}/${imgN}${totalSlots>imgN&&imgN?" 循环用":""}</span>
         ${statusPill}
         <span class="spacer"></span>
@@ -4031,7 +4183,8 @@ App.renderStage = function(){
       const fillCss = ph.fill ? `background:${colorRgba(ph.fill, ph.fillA===undefined?1:num(ph.fillA,1))};` : "";
       // 无填充时编辑器内用虚线框提示范围（出图为透明）
       const noneHint = ph.fill ? "" : "outline:1px dashed rgba(96,96,232,.45);outline-offset:-2px;";
-      el.innerHTML=`<span class="tag">图位</span>
+      el.innerHTML=`<span class="tag${ph.isMain?" main-tag":""}">${ph.isMain?"★ 主图位":"图位"}</span>
+        ${ph.isMain?'<span class="main-badge">主</span>':''}
         <div style="width:100%;height:100%;${fillCss}${borderCss}${noneHint}display:flex;align-items:center;justify-content:center;color:#7d8cc8;font-size:11px;overflow:hidden;border-radius:inherit;${shCss}">图片</div>`;
       if(ph.corners||App.ed.persp===ph.uid){
         quads.push({ph,cs:ph.corners||App.rectCorners(ph),target:App.ed.persp===ph.uid});
@@ -4437,6 +4590,11 @@ App.renderEditorProps = function(){
   let typeHtml="";
   if(ph.type==="img"){
     typeHtml=`<h4>图片位</h4>
+      <label class="small" style="display:flex;align-items:center;gap:5px;margin:2px 0 8px;padding:6px 8px;background:#f5f6ff;border-radius:6px;border:1px solid #e6e9fb">
+        <input type="checkbox" ${ph.isMain?"checked":""} onchange="App.edSet('${ph.uid}','isMain',this.checked)">
+        <b>设为主图位</b>
+        <span class="small muted" style="margin-left:auto">开启后该位置只填入「主图素材」</span>
+      </label>
       <div class="fld"><label>填充</label>
         <select onchange="App.edSet('${ph.uid}','fit',this.value)">
           <option value="cover" ${(!ph.fit||ph.fit==="cover")?"selected":""}>cover 填满裁剪</option>
@@ -4942,7 +5100,7 @@ App.addPH = function(type,ratio){
   }
   let ph;
   if(type==="img"){
-    ph = {uid:App.uid(),type:"img",x:+((100-w)/2).toFixed(2),y:+((100-h)/2).toFixed(2),w:+w.toFixed(2),h:+h.toFixed(2),fit:"cover",radius:0};
+    ph = {uid:App.uid(),type:"img",x:+((100-w)/2).toFixed(2),y:+((100-h)/2).toFixed(2),w:+w.toFixed(2),h:+h.toFixed(2),fit:"cover",radius:0,isMain:false};
   }else if(type==="shape"){
     // 几何形状：填充/边框各自可调颜色与透明度，支持阴影；几何类型进画布后可随时切换
     const kind=(["rect","round","ellipse","triangle","diamond"].includes(ratio)?ratio:"round");
