@@ -287,15 +287,15 @@ body.is-admin #btnTplSel{display:inline-block}
 .ratio-chips{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-top:6px}
 .ratio-chip{border:1px solid var(--line);background:#fff;border-radius:7px;font-size:11px;padding:4px 0;color:var(--ink2);cursor:pointer}
 .ratio-chip:hover{border-color:var(--brand);color:var(--brand-d);background:var(--brand-l)}
-/* 四角数字微调：X 用横向 ◀▶ 按钮 */
-.hsteps{display:inline-flex;align-items:center;gap:2px;flex:1;min-width:0}
-.hsteps i{font-style:normal;cursor:pointer;background:#eef0fe;border-radius:4px;padding:3px 4px;font-size:9px;line-height:1;color:var(--brand-d);user-select:none;flex:0 0 auto}
-.hsteps i:hover{background:#e2e5fd}
-.hsteps input{width:100%;min-width:0;padding:4px 3px;appearance:textfield;-moz-appearance:textfield}
-.hsteps input::-webkit-inner-spin-button,.hsteps input::-webkit-outer-spin-button{display:none;margin:0}
-.num-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:7px}
-.num-grid label{font-size:11px;color:var(--ink2);display:flex;align-items:center;gap:3px;min-width:0;overflow:hidden;white-space:nowrap}
-.num-grid input{width:100%;min-width:0;padding:4px 5px}
+/* 四角数字微调：3 列网格（角名 | X:◀数字▶ | Y:数字），行按阅读顺序 左上/右上/左下/右下 */
+.num-grid{display:grid;grid-template-columns:30px minmax(0,1fr) minmax(0,1fr);gap:6px 5px;margin-bottom:7px;flex:1;min-width:0}
+.num-grid .ng-name{font-size:11px;color:var(--ink2);align-self:center;white-space:nowrap}
+.num-grid .ng-x{display:flex;align-items:center;gap:2px;min-width:0}
+.num-grid .ng-x i{font-style:normal;cursor:pointer;background:#eef0fe;border-radius:4px;padding:4px 4px;font-size:9px;line-height:1;color:var(--brand-d);user-select:none;flex:0 0 auto}
+.num-grid .ng-x i:hover{background:#e2e5fd}
+.num-grid .ng-x input{width:100%;min-width:0;padding:4px 3px;appearance:textfield;-moz-appearance:textfield}
+.num-grid .ng-x input::-webkit-inner-spin-button,.num-grid .ng-x input::-webkit-outer-spin-button{display:none;margin:0}
+.num-grid .ng-y{width:100%;min-width:0;padding:4px 5px;box-sizing:border-box}
 .ed-ph .ph-img{width:100%;height:100%;display:block}
 .shadow-sec{background:#f8f9fd;border:1px solid var(--line);border-radius:9px;padding:9px;margin:9px 0}
 
@@ -843,7 +843,7 @@ const CURRENT_PASSWORD_HASH = "8c924d88408ac6e3d9edf0b13ed7e2c6a06c6ad25afc1352b
 const AUTH_SESSION_KEY = "xhs_auth_session";
 const AUTH_PERM_KEY    = "xhs_auth_perm_v1";
 const GUIDE_KEY = "xhs_guide_seen_v1";
-const TOOL_VERSION = "1.0.2";
+const TOOL_VERSION = "1.0.3";
 const REMOTE_VERSION_URL = "./version.json";
 const VERSION_SEEN_KEY = "xhs_last_version";
 const VERSION_SEEN_KEY_OLD = "xhs_seen_version_v1";
@@ -2306,7 +2306,10 @@ App.drawFit = function(ctx,img,x,y,w,h,mode,radius,ph){
   if(img && img.img && img.img.naturalWidth){
     const im = img.img, iw=im.naturalWidth, ih=im.naturalHeight;
     let sx=0,sy=0,sw=iw,sh=ih, dw=w,dh=h,dx=x,dy=y;
-    if(mode==="inside"){
+    if(mode==="stretch"){
+      // 拉伸铺满：源图全幅不裁不留白，直接拉到整个盒（透视时盒再单应到四边形）
+      sx=0;sy=0;sw=iw;sh=ih;dw=w;dh=h;dx=x;dy=y;
+    }else if(mode==="inside"){
       const k = Math.min(w/iw, h/ih); dw=iw*k; dh=ih*k; dx=x+(w-dw)/2; dy=y+(h-dh)/2;
     }else{
       const k = Math.max(w/iw, h/ih);
@@ -2819,27 +2822,9 @@ App.makeIdCode = function(){
   }
   rnd=rnd.replace(/[^0-9A-Z]/g,"");
   while(rnd.length<6) rnd+=Math.floor(Math.random()*36).toString(36).toUpperCase();
-  return ts+"-"+rnd.slice(0,6);
-};
-// 在成图右下角盖一枚低调的半透明身份码章（随图片一起导出，无法被模板/素材内容复用）
-App.stampIdCode = function(cv,code){
-  if(!cv||!code) return cv;
-  const g=cv.getContext("2d");
-  g.save();
-  const fs=Math.max(13,Math.round(cv.width*0.0165));
-  const label="身份码 "+code;
-  g.font=`400 ${fs}px "Microsoft YaHei","PingFang SC","Hiragino Sans GB",sans-serif`;
-  const tw=g.measureText(label).width;
-  const padX=fs*0.7, padY=fs*0.42, h=fs+padY*2, w=tw+padX*2;
-  const x1=cv.width-w-fs*0.8, y1=cv.height-h-fs*0.8;
-  g.fillStyle="rgba(0,0,0,0.22)";
-  App.rrPath(g,x1,y1,w,h,h/2); g.fill();
-  g.fillStyle="rgba(255,255,255,0.92)";
-  g.textAlign="left"; g.textBaseline="middle";
-  g.fillText(label,x1+padX,y1+h/2+fs*0.03);
-  g.restore();
-  cv._idCode=code;
-  return cv;
+  return "XHS"+String(d.getFullYear()).slice(2)+p2(d.getMonth()+1)+p2(d.getDate())
+    +p2(d.getHours())+p2(d.getMinutes())+p2(d.getSeconds())+"-"
+    +rnd.slice(0,6);
 };
 App.releasePages = function(s){ s.canvases.forEach(cv=>{ cv.width=0;cv.height=0; }); s.canvases=[]; s.thumbs=[]; };
 
@@ -3309,9 +3294,8 @@ App.generateSet = function(si){
       cx.fillStyle="#9aa0ad"; cx.font="40px sans-serif"; cx.textAlign="center";
       cx.fillText("本页渲染失败，可重新生成", cv.width/2, cv.height/2);
     }
-    // 每页每次生成都重新签发身份码（时间+随机），并盖到成图上（须在缩略图之前）
+    // 每页每次生成都重新签发身份码（时间+随机）；身份码仅记录/面板可查，不画到图片上
     p.idCode = App.makeIdCode();
-    App.stampIdCode(cv,p.idCode);
     s.canvases.push(cv);
     // 缩略图（小 dataURL，供行内显示）
     const tc=document.createElement("canvas");
@@ -3587,9 +3571,6 @@ App.renderPreviewCanvas = function(){
   if(!tpl) return;
   const imgs=App.pv.draft.slots.map(uid=>{ const im=App.imageByUid(uid); return im?{img:im.img}:null; });
   const cv=App.renderPageCanvas(tpl, imgs, App.pv.draft.texts, App.pv.draft.colors);
-  // 预览所见即所得：盖上当前这页已签发的身份码（未生成的旧数据无码则不盖）
-  const pvPage=App.state.sets[App.pv.si] && App.state.sets[App.pv.si].pages[App.pv.pi];
-  if(pvPage && pvPage.idCode) App.stampIdCode(cv,pvPage.idCode);
   const host=App.$("#pvMain");
   const old=App.$("#pvCanvas");
   cv.id="pvCanvas";
@@ -3704,7 +3685,6 @@ App.savePreviewChanges = function(){
     try{ cv=App.makePage(tpl,p); }
     catch(e){ App.reportError("pv-render",e); App.toast("本页渲染失败，请调整后重试"); return false; }
     p.idCode=App.makeIdCode();
-    App.stampIdCode(cv,p.idCode);
     if(s.canvases[App.pv.pi]){ s.canvases[App.pv.pi].width=0; s.canvases[App.pv.pi].height=0; }
     s.canvases[App.pv.pi]=cv;
     const tc=document.createElement("canvas");
@@ -4452,8 +4432,9 @@ App.renderEditorProps = function(){
     typeHtml=`<h4>图片位</h4>
       <div class="fld"><label>填充</label>
         <select onchange="App.edSet('${ph.uid}','fit',this.value)">
-          <option value="cover" ${ph.fit==="cover"?"selected":""}>cover 填满裁剪</option>
+          <option value="cover" ${(!ph.fit||ph.fit==="cover")?"selected":""}>cover 填满裁剪</option>
           <option value="inside" ${ph.fit==="inside"?"selected":""}>inside 完整包含</option>
+          <option value="stretch" ${ph.fit==="stretch"?"selected":""}>stretch 拉伸铺满</option>
         </select></div>
       ${colorFld(ph,"fill","填充色","#dfe5f8")}
       ${alphaFld(ph,"fillA","填充不透明度")}
@@ -4601,16 +4582,20 @@ App.shadowEditor=function(ph){
   </div>`;
 };
 App.cornersEditor=function(ph){
+  // 数据顺序固定为 左上/右上/右下/左下（渲染单应依赖）；面板按阅读顺序展示 左上→右上→左下→右下
   const names=["左上","右上","右下","左下"];
+  const order=[0,1,3,2];
   let grid="";
-  ph.corners.forEach((c,i)=>{
+  order.forEach(i=>{
+    const c=ph.corners[i];
     // X：横向 ◀ / ▶ 微调；Y 显示值 = 100 - 实际值（距底）：▲ 增大 → 元素上移，符合直觉
-    grid+=`<label>${names[i]}X<span class="hsteps"><i title="左移" onclick="App.edCornerNudge('${ph.uid}',${i},'x',-0.2)">◀</i><input type="number" step=".2" value="${c.x}" oninput="App.edCorner('${ph.uid}',${i},'x',this.value)"><i title="右移" onclick="App.edCornerNudge('${ph.uid}',${i},'x',0.2)">▶</i></span></label>
-           <label>${names[i]}Y<input type="number" step=".2" value="${(100-c.y).toFixed(1)}" oninput="App.edCorner('${ph.uid}',${i},'y',100-this.value)"></label>`;
+    grid+=`<span class="ng-name">${names[i]}</span>
+      <span class="ng-x"><i title="左移" onclick="App.edCornerNudge('${ph.uid}',${i},'x',-0.2)">◀</i><input type="number" step=".2" value="${c.x}" oninput="App.edCorner('${ph.uid}',${i},'x',this.value)"><i title="右移" onclick="App.edCornerNudge('${ph.uid}',${i},'x',0.2)">▶</i></span>
+      <input class="ng-y" type="number" step=".2" title="${names[i]}Y（值越大越靠上）" value="${(100-c.y).toFixed(1)}" oninput="App.edCorner('${ph.uid}',${i},'y',100-this.value)"></input>`;
   });
   return `<div class="fld"><label style="align-self:flex-start">四角</label>
       <div class="num-grid">${grid}</div></div>
-    <div class="upload-tip" style="margin:0 0 7px">微调：X 用 ◀ / ▶ 左右移动；Y 用 ▲=上移、▼=下移（Y 值越大越靠上）；大幅调整请到画布拖红点。</div>
+    <div class="upload-tip" style="margin:0 0 7px">每行一个角，顺序：左上 → 右上 → 左下 → 右下。微调：X 用 ◀ / ▶ 左右移动；Y 数字越大越靠上；大幅调整请到画布拖红点。</div>
     <button style="width:100%;margin-bottom:7px" onclick="App.edClearCorners('${ph.uid}')">恢复为矩形</button>`;
 };
 App.edSet = function(uid,key,val){
@@ -4702,14 +4687,19 @@ App.edCornerNudge=function(uid,i,k,d){
 };
 App.edPerspToggle=function(uid){
   const ph=App.ed.tpl.phs.find(p=>p.uid===uid); if(!ph) return;
-  if(App.ed.persp===uid){ App.ed.persp=null; }
-  else{
-    App.ed.persp=uid;
-    App.ed.sel=new Set([uid]);
-    if(!ph.corners){ ph.corners=App.rectCorners(ph); App.syncBBox(ph); App.edPush(); }
-    App.toast("透视对齐：拖动红色圆点对齐屏幕四角，右侧数字可微调，Esc 退出");
+  if(App.ed.persp===uid){ App.ed.persp=null; App.renderEditor(); return; }
+  // 仅「进入透视对齐」这一刻自动切 stretch；之后用户手动改档不再强制，退出再进才会再次触发
+  let needPush=false, switched=false;
+  App.ed.persp=uid;
+  App.ed.sel=new Set([uid]);
+  if(!ph.corners){ ph.corners=App.rectCorners(ph); App.syncBBox(ph); needPush=true; }
+  if(ph.type==="img" && (ph.fit||"cover")!=="stretch"){
+    ph.fit="stretch"; switched=true; needPush=true;
   }
-  App.renderEditor();
+  if(needPush) App.edPush();
+  App.renderEditor();   // 重建属性面板：填充下拉同步显示 stretch
+  if(switched) App.toast("已自动切换为拉伸铺满，确保图片完整覆盖屏幕");
+  else App.toast("透视对齐：拖动红色圆点对齐屏幕四角，右侧数字可微调，Esc 退出");
 };
 App.edClearCorners=function(uid){
   const ph=App.ed.tpl.phs.find(p=>p.uid===uid); if(!ph) return;
@@ -5215,9 +5205,8 @@ App.collectExportFiles = async function(onProgress){
         catch(e){ App.reportError("export-render",e); }
       }
       if(!cv){ failed.push(folder+"/"+(i+1)); done++; if(onProgress)onProgress(done,total); continue; }
-      // 身份码兜底：刷新页面后懒渲染、或旧版本生成的页，导出时补签；已盖章不重复盖
+      // 身份码兜底：刷新页面后懒渲染、或旧版本生成的页，导出时补签（仅记录，不绘制到图片上）
       if(!page.idCode) page.idCode=App.makeIdCode();
-      if(cv._idCode!==page.idCode) App.stampIdCode(cv,page.idCode);
       try{
         const blob=await App.canvasToJpeg(cv);
         if(!blob || blob.size<128) throw new Error("空文件");
