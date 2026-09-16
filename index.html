@@ -78,7 +78,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--brand)}
 
 /* ===== 主区两栏 ===== */
 #main{height:calc(100% - 58px);display:flex;gap:14px;padding:14px;overflow:hidden}
-.col-left{width:37%;min-width:380px;display:flex;flex-direction:column;gap:14px;overflow-y:auto}
+.col-left{width:44%;min-width:420px;display:flex;flex-direction:column;gap:14px;overflow-y:auto}
 .col-right{flex:1;display:flex;flex-direction:column;gap:14px;overflow-y:auto}
 .card{background:var(--panel);border-radius:var(--radius);box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden}
 .card-head{display:flex;align-items:center;gap:9px;padding:12px 16px;border-bottom:1px solid var(--line)}
@@ -154,40 +154,42 @@ body.is-admin #btnTplSel{display:inline-block}
 .set-box{border:1.5px solid var(--line);border-radius:13px;overflow:hidden;background:#fff;transition:.15s}
 .set-box.active{border-color:var(--brand);box-shadow:0 0 0 3px rgba(96,96,232,.08)}
 .set-box.manage-check{padding-left:0}
-.set-top{display:flex;align-items:center;gap:7px 10px;padding:11px 14px;background:#fafbfe;border-bottom:1px solid var(--line);cursor:default;flex-wrap:wrap;min-width:0}
+.set-top{display:flex;align-items:center;gap:7px 10px;padding:11px 14px;background:#fafbfe;cursor:default;flex-wrap:wrap;min-width:0}
 .set-box.active .set-top{background:var(--brand-l)}
 .caret{color:var(--brand-d);cursor:pointer;user-select:none;white-space:nowrap;font-size:12px;flex:0 0 auto;padding:3px 8px;border-radius:7px;background:#eef0fe}
 .caret:hover{background:#e2e5fd}
 .set-title{font-weight:700;font-size:15px;border:1px solid transparent;background:transparent;padding:3px 6px;border-radius:7px;max-width:150px;min-width:64px;flex:0 1 auto}
 .set-top .pill{flex-shrink:0}
 .set-top .chk{flex-shrink:0}
+/* 操作按钮固定在方案卡头部右下角：无论名称/徽章占几行，始终整行靠右 */
+.set-foot{display:flex;justify-content:flex-end;align-items:center;padding:9px 14px;background:#fafbfe;border-bottom:1px solid var(--line)}
+.set-box.active .set-foot{background:var(--brand-l)}
 .set-ops{display:flex;align-items:center;gap:10px;flex-shrink:0}
-.set-top .spacer{flex:1 1 12px}
-.set-top button{flex-shrink:0}
+.set-foot button{flex-shrink:0}
 .set-title:hover{background:#eaeaf8}
 .pill{font-size:11px;border-radius:20px;padding:3px 10px;background:var(--gray-pill);color:var(--ink2);white-space:nowrap}
 .pill.ok{background:var(--ok-bg);color:var(--ok-ink)}
 .pill.warn{background:var(--warn-bg);color:var(--warn-ink)}
 .pill.danger{background:var(--danger-bg);color:var(--danger-ink)}
-.page-list{padding:6px 14px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 22px}
+.page-list{padding:8px 14px;display:grid;grid-template-columns:1fr;gap:0}
 .page-list.collapsed{display:none}
 .page-list .empty-queue{grid-column:1/-1}
-.page-row{display:flex;align-items:center;gap:9px;padding:8px 2px;border-bottom:1px dashed #eef0f6;min-width:0}
+.page-row{display:flex;align-items:flex-start;gap:12px;padding:10px 2px;border-bottom:1px dashed #eef0f6;min-width:0}
 .page-row .p-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
-.page-row .p-info{flex:1;min-width:0;overflow:hidden}
-.page-row .p-info .p-sub{display:flex;align-items:center;gap:6px;margin-top:2px}
+.page-row .p-info{flex:1;min-width:0;overflow:hidden;padding-top:1px}
+.page-row .p-info .p-sub{display:flex;align-items:center;gap:6px;margin-top:4px}
 .page-row:last-child{border-bottom:none}
-.p-num{width:24px;height:24px;border-radius:50%;background:var(--brand);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:0 0 24px}
-.p-thumb{flex:0 0 64px;width:64px;border-radius:7px;overflow:hidden;border:1px solid var(--line);position:relative;background:#f2f4fc}
+.p-num{width:24px;height:24px;border-radius:50%;background:var(--brand);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:0 0 24px;margin-top:31px}
+.p-thumb{flex:0 0 86px;width:86px;border-radius:9px;overflow:hidden;border:1px solid var(--line);position:relative;background:#f2f4fc;box-shadow:0 1px 5px rgba(30,40,90,.07)}
 .p-thumb img,.p-thumb .mini-tpl{width:100%;height:100%;display:block;object-fit:cover}
 .p-thumb .mini-tpl .ph{position:absolute;background:#d4dcf6;border:1px solid #b9c4ee}
 .p-thumb .mini-tpl .ph.t{background:#e6e1fa}
 .p-thumb .stale{position:absolute;inset:0;background:rgba(255,255,255,.72);color:var(--warn-ink);font-size:9px;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.2}
-.p-thumb .fresh-dot{position:absolute;right:2px;bottom:2px;width:12px;height:12px;border-radius:50%;background:var(--green);color:#fff;font-size:8px;line-height:12px;text-align:center}
-.p-name{font-weight:600;font-size:13px}
+.p-thumb .fresh-dot{position:absolute;right:3px;bottom:3px;width:14px;height:14px;border-radius:50%;background:var(--green);color:#fff;font-size:9px;line-height:14px;text-align:center;box-shadow:0 0 0 2px #fff}
+.p-name{font-weight:600;font-size:13.5px}
 .p-ratio{color:var(--ink3);font-size:11px;font-weight:400;margin-left:6px}
 .p-miss{color:var(--danger-ink);font-size:11px;white-space:nowrap;flex-shrink:0}
-.p-ops{margin-left:auto;display:flex;align-items:center;gap:5px;flex-shrink:0}
+.p-ops{margin-left:auto;align-self:center;display:flex;align-items:center;gap:5px;flex-shrink:0}
 .p-ops .pill{flex-shrink:0}
 .p-ops .icon-only{padding:4px 7px;font-size:12px}
 .empty-queue{padding:26px;text-align:center;color:var(--ink3);font-size:13px;border:2px dashed #e2e5f2;border-radius:11px;margin:6px 0}
@@ -205,17 +207,33 @@ body.is-admin #btnTplSel{display:inline-block}
 /* ===== 工坊编辑器 ===== */
 #editor{position:fixed;inset:0;z-index:800;background:#e9ebf0;display:none;flex-direction:column}
 #editor.show{display:flex}
-#histView{position:fixed;inset:0;z-index:780;background:#e9ebf0;display:none;flex-direction:column}
+#histView{position:fixed;inset:0;z-index:780;background:linear-gradient(180deg,#f2f4fb 0%,#e9ebf2 100%);display:none;flex-direction:column}
 #histView.show{display:flex}
-.hist-top{display:flex;align-items:center;gap:12px;padding:11px 18px;background:#fff;border-bottom:1px solid var(--line);flex-wrap:wrap}
-#histBody{flex:1;overflow:auto;padding:16px}
-.hist-item{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:8px;flex-wrap:wrap;max-width:860px;margin-left:auto;margin-right:auto}
-.hi-main{display:flex;flex-direction:column;gap:2px;min-width:200px;flex:1}
+.hist-top{display:flex;align-items:center;gap:12px;padding:14px 22px;background:linear-gradient(90deg,#ffffff,#f7f8ff);border-bottom:1px solid var(--line);flex-wrap:wrap;box-shadow:0 1px 8px rgba(30,40,90,.05)}
+.hist-top h2{margin:0;font-size:17px}
+.hist-sub{font-size:12px;color:var(--ink3)}
+#histBody{flex:1;overflow:auto;padding:20px 16px 34px}
+.hist-count{max-width:920px;margin:0 auto 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.hist-count b{font-size:13.5px}
+.hist-count .small{flex:1;min-width:200px}
+.hist-item{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid #e3e7f2;border-radius:14px;padding:12px 16px;margin-bottom:12px;flex-wrap:wrap;max-width:920px;margin-left:auto;margin-right:auto;box-shadow:0 2px 10px rgba(30,40,90,.06);transition:transform .12s ease,box-shadow .12s ease,border-color .12s ease}
+.hist-item:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(30,40,90,.13);border-color:#c9d4f5}
+.hi-thumb{width:66px;height:88px;border-radius:9px;overflow:hidden;border:1px solid #e3e7f2;background:linear-gradient(160deg,#f6f7fd,#eceffc);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--ink3);font-size:11px}
+.hi-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.hi-main{display:flex;flex-direction:column;gap:6px;min-width:220px;flex:1}
+.hi-name{font-weight:700;font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hi-meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.hi-chip{font-size:11px;padding:2px 9px;border-radius:999px;background:#f1f3fb;color:#5a6480;border:1px solid #e3e7f2;white-space:nowrap}
+.hi-chip.t{background:#eef1ff;color:#4451b8;border-color:#d8defc}
+.hi-chip.i{background:#f0f9f1;color:#2c7a39;border-color:#d3ecd7}
 .hi-ops{display:flex;gap:8px;flex-shrink:0}
-.hist-detail{max-width:860px;margin:0 auto}
-.hist-page{display:flex;gap:12px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:10px;align-items:flex-start}
-.hist-page img{width:120px;border-radius:6px;border:1px solid var(--line);flex-shrink:0}
-.hist-page-noimg{width:120px;height:150px;display:flex;align-items:center;justify-content:center;color:var(--ink3);font-size:11px;background:#f2f3f7;border-radius:6px;flex-shrink:0}
+.hist-detail{max-width:920px;margin:0 auto}
+.hist-detail-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:2px 0 16px}
+.hist-detail-head h3{margin:0;font-size:17px}
+.hist-page{display:flex;gap:14px;background:#fff;border:1px solid #e3e7f2;border-radius:14px;padding:12px;margin-bottom:12px;align-items:flex-start;box-shadow:0 2px 8px rgba(30,40,90,.05);transition:box-shadow .12s ease}
+.hist-page:hover{box-shadow:0 6px 18px rgba(30,40,90,.11)}
+.hist-page img{width:150px;border-radius:9px;border:1px solid var(--line);flex-shrink:0;box-shadow:0 1px 5px rgba(30,40,90,.08)}
+.hist-page-noimg{width:150px;height:200px;display:flex;align-items:center;justify-content:center;color:var(--ink3);font-size:11px;background:#f2f3f7;border-radius:9px;flex-shrink:0}
 .hp-meta{flex:1;min-width:0}
 .empty-hint{text-align:center;color:var(--ink3);padding:70px 20px;line-height:2}
 .ed-top{height:50px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 12px;gap:8px}
@@ -838,8 +856,8 @@ body.is-admin #btnTplSel{display:inline-block}
 <!-- P1. 方案历史记录（像模板工坊一样独立一页） -->
 <div id="histView">
   <div class="hist-top">
-    <b style="font-size:15px">🕘 历史记录</b>
-    <span class="small muted">最近 20 条方案生成快照（自带模板与图片），点击详情查看，可整体恢复到工作台</span>
+    <h2>🕘 历史记录</h2>
+    <span class="hist-sub">最近 20 条方案生成快照 · 恢复时连同导出时的模板与图片一并还原，可只替换其中某一张图</span>
     <span class="spacer"></span>
     <button id="histBack" style="display:none" onclick="App.histRenderList()">← 返回列表</button>
     <button class="ghost" onclick="App.closeHist()">✕ 关闭</button>
@@ -905,7 +923,7 @@ const CURRENT_PASSWORD_HASH = "bba1b366a8205a4ccbe8277d46e21497cf1a93d3cd40c996c
 const AUTH_SESSION_KEY = "xhs_auth_session";
 const AUTH_PERM_KEY    = "xhs_auth_perm_v1";
 const GUIDE_KEY = "xhs_guide_seen_v1";
-const TOOL_VERSION = "1.0.9";
+const TOOL_VERSION = "1.0.10";
 const REMOTE_VERSION_URL = "./version.json";
 const VERSION_SEEN_KEY = "xhs_last_version";
 const VERSION_SEEN_KEY_OLD = "xhs_seen_version_v1";
@@ -929,9 +947,9 @@ const RATIO_DIM = { "1:1":[1080,1080], "3:4":[1080,1440], "9:16":[1080,1920] };
 const App = {};
 App.$  = s => document.querySelector(s);
 App.$$ = s => [...document.querySelectorAll(s)];
-App.toast = function(msg){
+App.toast = function(msg, ms){
   const t = App.$("#toast"); t.textContent = msg; t.classList.add("show");
-  clearTimeout(App._tt); App._tt = setTimeout(()=>t.classList.remove("show"), 2200);
+  clearTimeout(App._tt); App._tt = setTimeout(()=>t.classList.remove("show"), ms||2200);
 };
 App.uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
 App.bytesHex = async buf => [...new Uint8Array(buf)].map(x=>x.toString(16).padStart(2,"0")).join("");
@@ -3717,20 +3735,59 @@ App.histRenderList = function(){
   const host=App.$("#histBody");
   if(!App._compat.idb){ host.innerHTML='<div class="empty-hint">当前浏览器不支持本地数据库，无法使用历史记录</div>'; return; }
   if(!App._histCache.length){
-    host.innerHTML=`<div class="empty-hint">还没有历史记录<br><span class="small muted">方案「生成」成功后会自动记入这里（最近 ${App.HIST_MAX} 条），点击详情可查看每页快照，或整体恢复到工作台</span></div>`;
+    host.innerHTML=`<div class="empty-hint">🕘 还没有历史记录<br><span class="small muted">方案「生成」成功后会自动记入这里（最近 ${App.HIST_MAX} 条）<br>点击详情可查看每页快照，或整体恢复到工作台（连同当时的模板与图片）</span></div>`;
     return;
   }
-  host.innerHTML = App._histCache.map(r=>{
+  host.innerHTML = `<div class="hist-count"><b>共 ${App._histCache.length} 条记录</b>
+    <span class="small muted">最新在前 · 超出 ${App.HIST_MAX} 条自动清理最旧 · 恢复会连同导出时的模板与图片一并还原到工作台末尾</span></div>`
+  + App._histCache.map(r=>{
     const tpls=new Set(r.pages.map(p=>p.tplId)).size;
     return `<div class="hist-item">
-      <div class="hi-main"><b>${App.esc(r.name||"未命名方案")}</b>
-        <span class="small muted">${App.histFmtTime(r.ts)} · ${r.pages.length} 页 · ${tpls} 套模板 · ${(r.images||[]).length} 张图</span></div>
+      <div class="hi-thumb" id="hthumb-${r.uid}">渲染中…</div>
+      <div class="hi-main">
+        <div class="hi-name">${App.esc(r.name||"未命名方案")}</div>
+        <div class="hi-meta">
+          <span class="hi-chip">🕘 ${App.histFmtTime(r.ts)}</span>
+          <span class="hi-chip t">${r.pages.length} 页</span>
+          <span class="hi-chip t">${tpls} 套模板</span>
+          <span class="hi-chip i">${(r.images||[]).length} 张图</span>
+        </div>
+      </div>
       <div class="hi-ops">
         <button onclick="App.histOpenDetail('${r.uid}')">👁 详情</button>
         <button class="primary" onclick="App.histRestore('${r.uid}')">↺ 恢复到工作台</button>
         <button class="icon-only" title="删除该记录" onclick="App.histDelete('${r.uid}')">🗑</button>
       </div></div>`;
   }).join("");
+  App._histFillThumbs();
+};
+// 列表缩略图：用第一页快照现场渲染（逐张让出主线程，不阻塞页面）
+App._histThumb = async function(rec){
+  if(rec._thumb!==undefined) return rec._thumb;
+  rec._thumb="";
+  try{
+    const p=rec.pages[0]; if(!p||!p.tplSnap) return "";
+    const cache={};
+    const im2obj=im=>{ if(!im) return null; if(!cache[im.uid]){ const i=new Image(); i.src=im.dataUrl; cache[im.uid]=i; } return {img:cache[im.uid]}; };
+    const used=[...new Set((p.slots||[]).filter(Boolean))];
+    for(const u of used){ const im=(rec.images||[]).find(x=>x.uid===u); if(im&&cache[im.uid]){ try{ await cache[im.uid].decode(); }catch(e){} } }
+    const imgs=(p.slots||[]).map(u=>im2obj((rec.images||[]).find(x=>x.uid===u)));
+    const cv=App.renderPageCanvas(p.tplSnap, imgs, p.texts||{}, p.colors||{});
+    const tc=document.createElement("canvas"); tc.width=180; tc.height=Math.max(1,Math.round(180*cv.height/Math.max(1,cv.width)));
+    tc.getContext("2d").drawImage(cv,0,0,tc.width,tc.height);
+    rec._thumb=tc.toDataURL("image/jpeg",0.75); tc.width=0; tc.height=0;
+  }catch(e){ rec._thumb=""; }
+  return rec._thumb;
+};
+App._histFillThumbs = async function(){
+  for(const r of App._histCache){
+    const el=App.$("#hthumb-"+r.uid);
+    if(!el) continue;
+    const d=await App._histThumb(r);
+    if(d && el.isConnected) el.innerHTML='<img src="'+d+'" alt="">';
+    else if(el.isConnected) el.textContent="暂无";
+    await new Promise(res=>setTimeout(res,0));
+  }
 };
 App.histOpenDetail = async function(uid){
   const rec=App._histCache.find(r=>r.uid===uid); if(!rec) return;
@@ -3740,8 +3797,13 @@ App.histOpenDetail = async function(uid){
   // 现场渲染每页缩略图：全部使用快照数据，不依赖当前模板库/素材库
   const thumbs=await App.histDetailThumbs(rec);
   host.innerHTML = `<div class="hist-detail">
-    <h3 style="margin:0 0 4px">${App.esc(rec.name||"未命名方案")}</h3>
-    <div class="small muted" style="margin-bottom:10px">${App.histFmtTime(rec.ts)} · 共 ${rec.pages.length} 页 · 快照自带模板与图片，可整体恢复到工作台</div>
+    <div class="hist-detail-head">
+      <h3>${App.esc(rec.name||"未命名方案")}</h3>
+      <span class="hi-chip">🕘 ${App.histFmtTime(rec.ts)}</span>
+      <span class="hi-chip t">共 ${rec.pages.length} 页</span>
+      <span class="hi-chip i">${(rec.images||[]).length} 张图</span>
+      <span class="small muted" style="margin-left:auto">快照自带模板与图片，可整体恢复到工作台后只替换某一张图</span>
+    </div>
     ${rec.pages.map((p,pi)=>`<div class="hist-page">
       ${thumbs[pi]?`<img src="${thumbs[pi]}">`:'<div class="hist-page-noimg">缩略图渲染失败</div>'}
       <div class="hp-meta"><b>第 ${pi+1} 页</b> · ${App.esc((p.tplSnap&&p.tplSnap.name)||"模板")}${(p.tplSnap&&p.tplSnap.ratio)?"（"+p.tplSnap.ratio+"）":""}
@@ -3781,12 +3843,13 @@ App.histRestore = async function(uid){
     // 1) 图片副本合入素材库（同 uid 已存在则复用，不重复）
     const have=new Set(App.state.images.map(im=>im.uid));
     const add=[];
-    (rec.images||[]).forEach(im=>{
-      if(have.has(im.uid)) return;
+    for(const im of (rec.images||[])){
+      if(have.has(im.uid)) continue;
       const i=new Image(); i.src=im.dataUrl;
+      try{ await i.decode(); }catch(e){}
       const o={uid:im.uid, name:im.name||"图片", hash:im.hash||"", dataUrl:im.dataUrl, img:i, main:!!im.main, tail:!!im.tail};
       App.state.images.push(o); add.push(o);
-    });
+    }
     if(add.length) await App.idbImagesPutAll(add);
     // 2) 模板快照登记（tplById 兜底命中；刷新后由 histTplsLoad 恢复）。
     //    以本条记录的快照为准直接覆盖：即使同 id 模板后来被编辑过，恢复结果仍与本记录导出时完全一致。
@@ -3801,7 +3864,7 @@ App.histRestore = async function(uid){
     App.renderImages(); App.renderSets(); App.saveSession();
     App.closeHist();
     App.$("#setCard").scrollIntoView({behavior:"smooth",block:"start"});
-    App.toast(`已把「${s.name}」恢复到工作台末尾（第 ${App.state.sets.length} 套），换图后点「生成」即可`);
+    App.toast(`已把「${s.name}」恢复到工作台末尾（第 ${App.state.sets.length} 套），导出时的图片已一并还原；点「检查」可只替换其中某一张图`, 4200);
   }catch(e){ App.reportError("hist-restore",e); App.toast("恢复失败，请重试"); }
 };
 App.histDelete = async function(uid){
@@ -3937,7 +4000,8 @@ App.renderSets = function(){
         ${tailPill}
         <span class="pill ${totalSlots>imgN?(imgN?"warn":"danger"):""}" ${totalSlots>imgN&&imgN?`title="素材不够，生成时自动循环使用"`:""}>素材${totalSlots}/${imgN}${totalSlots>imgN&&imgN?" 循环用":""}</span>
         ${statusPill}
-        <span class="spacer"></span>
+      </div>
+      <div class="set-foot" onclick="event.stopPropagation()">
         <span class="set-ops">
           <button class="pink" onclick="event.stopPropagation();App.generateSetBtn(${si})">🚀 生成</button>
           <button class="outline" onclick="event.stopPropagation();App.inspectSet(${si})">👁 检查</button>
