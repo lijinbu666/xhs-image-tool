@@ -95,9 +95,9 @@ input:focus,select:focus,textarea:focus{border-color:var(--brand)}
 .img-strip:empty{display:none}
 .img-thumb{position:relative;flex:0 0 64px;width:64px;height:64px;border-radius:8px;overflow:hidden;border:1px solid var(--line)}
 .pool-sec{margin-bottom:10px}
-.pool-head{font-size:12px;margin-bottom:4px;display:flex;align-items:center;gap:6px}
-.pool-head b{font-weight:700}
-.pool-head .small{font-size:11px;line-height:1.45}
+.pool-head{font-size:12px;margin-bottom:4px}
+.pool-head b{font-weight:700;white-space:nowrap;display:block}
+.pool-head .small{font-size:11px;line-height:1.45;display:block;margin-top:1px}
 .pool-badge{position:absolute;top:2px;left:2px;font-size:9px;font-weight:700;padding:1px 4px;border-radius:3px;border:none;cursor:pointer;color:#fff;line-height:1.4;z-index:2}
 .pool-badge.main{background:#ff5b7a}
 .pool-badge.tail{background:#e8862e}
@@ -205,6 +205,19 @@ body.is-admin #btnTplSel{display:inline-block}
 /* ===== 工坊编辑器 ===== */
 #editor{position:fixed;inset:0;z-index:800;background:#e9ebf0;display:none;flex-direction:column}
 #editor.show{display:flex}
+#histView{position:fixed;inset:0;z-index:780;background:#e9ebf0;display:none;flex-direction:column}
+#histView.show{display:flex}
+.hist-top{display:flex;align-items:center;gap:12px;padding:11px 18px;background:#fff;border-bottom:1px solid var(--line);flex-wrap:wrap}
+#histBody{flex:1;overflow:auto;padding:16px}
+.hist-item{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:8px;flex-wrap:wrap;max-width:860px;margin-left:auto;margin-right:auto}
+.hi-main{display:flex;flex-direction:column;gap:2px;min-width:200px;flex:1}
+.hi-ops{display:flex;gap:8px;flex-shrink:0}
+.hist-detail{max-width:860px;margin:0 auto}
+.hist-page{display:flex;gap:12px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:10px;align-items:flex-start}
+.hist-page img{width:120px;border-radius:6px;border:1px solid var(--line);flex-shrink:0}
+.hist-page-noimg{width:120px;height:150px;display:flex;align-items:center;justify-content:center;color:var(--ink3);font-size:11px;background:#f2f3f7;border-radius:6px;flex-shrink:0}
+.hp-meta{flex:1;min-width:0}
+.empty-hint{text-align:center;color:var(--ink3);padding:70px 20px;line-height:2}
 .ed-top{height:50px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 12px;gap:8px}
 .ed-main{flex:1;display:flex;min-height:0}
 .ed-stage-wrap{flex:1;overflow:auto;position:relative;background:#e9ebf0}
@@ -468,16 +481,16 @@ body.is-admin #btnTplSel{display:inline-block}
   <div class="modal">
     <div class="modal-head">📖 使用指南<span class="spacer"></span><button class="ghost" onclick="App.closeGuide()">✕</button></div>
     <div class="modal-body">
-      <div class="guide-sec"><h3>第一步 · 上传图片（任选一种方式，可混用）</h3><ul>
+      <div class="guide-sec"><h3>第一步 · 上传图片 <span style="font-weight:400;font-size:0.8em;color:var(--ink3)">（任选一种方式，可混用）</span></h3><ul>
         <li>点击左上上传区，在系统窗口里一次选多张图片批量上传；</li>
         <li>直接把图片文件<b>拖拽</b>进上传区，支持一次拖入多张，自动按文件去重；</li>
         <li>截图后在页面里按 <b>Ctrl+V</b>，直接粘贴上传，不用先存文件；</li>
         <li>把 <b>PDF</b> 拖进来会自动转成图片，可勾选要哪几页（PPT 建议先导出/另存为 PDF）。</li></ul></div>
       <div class="guide-sec"><h3>第二步 · 按笔记配图顺序依次点模板</h3><ul>
         <li>在左下「模板库」里，按你发小红书笔记时配图的先后顺序，<b>依次点击模板卡片</b>；</li>
-        <li>每点一张，它就带编号加入右侧「配图方案」，素材会按顺序自动填入各页图位；</li>
+        <li>每点一张，它就带编号加入右侧「方案工作台」，素材会按顺序自动填入各页图位；</li>
         <li>排错了可用行内 ▲▼ 调整顺序、✕ 移除；还能用比例标签和搜索快速找模板。</li></ul></div>
-      <div class="guide-sec"><h3>第三步 · 在配图方案里点「生成」</h3><ul>
+      <div class="guide-sec"><h3>第三步 · 在方案工作台里点「生成」</h3><ul>
         <li>排好顺序后，点方案卡右上角红色「🚀 生成」按钮，系统把素材逐页套入模板生成配图。</li></ul></div>
       <div class="guide-sec"><h3>第四步 · 输出前预览、检查与修改</h3><ul>
         <li>点「👁 检查」逐页预览最终效果：可替换某页配图、更换整页模板、修改文字和文字颜色；</li>
@@ -614,13 +627,17 @@ body.is-admin #btnTplSel{display:inline-block}
         <button onclick="App.clearAllImages()">🗑 一键清空</button>
       </div>
       <div class="card-body" style="padding-bottom:10px">
-        <label class="small" style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap">
-          <input type="checkbox" id="presetMainChk" onchange="App.togglePresetMain(this.checked)">
-          <b>预指定主图</b>
-          <input type="checkbox" id="presetTailChk" onchange="App.togglePresetTail(this.checked)" style="margin-left:6px">
-          <b>预指定尾图</b>
-          <span class="small muted" style="flex-basis:100%">开启后素材分区上传：主图位 / 尾图位只填对应素材，避免与普通位重复</span>
-        </label>
+        <div style="display:flex;gap:10px;margin-bottom:8px">
+          <label class="small" style="flex:1;display:flex;align-items:center;gap:6px;cursor:pointer;min-width:0">
+            <input type="checkbox" id="presetMainChk" onchange="App.togglePresetMain(this.checked)">
+            <b>预指定主图</b>
+          </label>
+          <label class="small" style="flex:1;display:flex;align-items:center;gap:6px;cursor:pointer;min-width:0">
+            <input type="checkbox" id="presetTailChk" onchange="App.togglePresetTail(this.checked)">
+            <b>预指定尾图</b>
+          </label>
+        </div>
+        <div class="small muted" style="margin-bottom:8px">开启后素材分区上传：主图位 / 尾图位只填对应素材，避免与普通位重复</div>
         <div id="poolBar" style="display:none;margin-bottom:8px">
           <div class="seg" id="poolSeg"></div>
           <div class="small muted" id="poolHint" style="margin-top:5px">当前上传到：主图素材。主图素材只会填入模板的「主图位」。</div>
@@ -678,13 +695,14 @@ body.is-admin #btnTplSel{display:inline-block}
 
   <!-- 右列 -->
   <div class="col-right">
-    <!-- ③ 配图方案 -->
+    <!-- ③ 方案工作台 -->
     <div class="card" id="setCard">
       <div class="card-head">
-        <span class="num-badge">3</span><span class="card-title" style="font-size:15px">配图方案</span>
+        <span class="num-badge">3</span><span class="card-title" style="font-size:15px">方案工作台</span>
         <span class="small muted">（同一套素材，可一次排多套）</span>
         <span class="spacer"></span>
         <div class="set-toolbar">
+          <button onclick="App.openHist()" title="最近 20 条生成记录，可整体恢复">🕘 历史</button>
           <button onclick="App.addSet()">＋ 添加一套方案</button>
           <button onclick="App.toggleManageMode()" id="btnManage">☷ 方案管理</button>
           <button onclick="App.toggleAllSets()" id="btnAllSets">全部折叠 ▴</button>
@@ -713,7 +731,7 @@ body.is-admin #btnTplSel{display:inline-block}
         <div class="export-tip">✅ 全部方案生成并检查完毕后，统一导出：</div>
         <div class="export-loc">
           <span>📂 输出位置：</span>
-          <b id="outLocText">未设置（首次导出时会弹出系统文件夹选择框）</b>
+          <b id="outLocText">未设置 <span style="font-weight:400;font-size:11px;color:var(--ink3)">（首次导出时会弹出系统文件夹选择框）</span></b>
           <span class="spacer"></span>
           <button onclick="App.chooseOutputDir()">选择输出文件夹</button>
           <button class="ghost" id="btnForgetOut" onclick="App.forgetOutputDir()" style="display:none">解除绑定</button>
@@ -817,6 +835,18 @@ body.is-admin #btnTplSel{display:inline-block}
 <!-- 工坊模板预览遮罩 -->
 <div id="edPreviewMask"></div>
 
+<!-- P1. 方案历史记录（像模板工坊一样独立一页） -->
+<div id="histView">
+  <div class="hist-top">
+    <b style="font-size:15px">🕘 历史记录</b>
+    <span class="small muted">最近 20 条方案生成快照（自带模板与图片），点击详情查看，可整体恢复到工作台</span>
+    <span class="spacer"></span>
+    <button id="histBack" style="display:none" onclick="App.histRenderList()">← 返回列表</button>
+    <button class="ghost" onclick="App.closeHist()">✕ 关闭</button>
+  </div>
+  <div id="histBody"></div>
+</div>
+
 <!-- O. 方案预览 -->
 <div id="preview">
   <div class="pv-box">
@@ -875,7 +905,7 @@ const CURRENT_PASSWORD_HASH = "bba1b366a8205a4ccbe8277d46e21497cf1a93d3cd40c996c
 const AUTH_SESSION_KEY = "xhs_auth_session";
 const AUTH_PERM_KEY    = "xhs_auth_perm_v1";
 const GUIDE_KEY = "xhs_guide_seen_v1";
-const TOOL_VERSION = "1.0.7";
+const TOOL_VERSION = "1.0.8";
 const REMOTE_VERSION_URL = "./version.json";
 const VERSION_SEEN_KEY = "xhs_last_version";
 const VERSION_SEEN_KEY_OLD = "xhs_seen_version_v1";
@@ -1075,16 +1105,17 @@ App.storageWarnOnce = function(){
 };
 
 // ---- 0.7 素材图 IndexedDB（容量远大于 localStorage，刷新 / 关闭重开均可恢复） ----
-App.IMG_IDB="xhs_app_img_db_v1"; App.IMG_STORE="images"; App.EDASSET_STORE="edassets";
+App.IMG_IDB="xhs_app_img_db_v1"; App.IMG_STORE="images"; App.EDASSET_STORE="edassets"; App.HIST_STORE="hist";
 App._imgDbP=null;
 App.imgDb = function(){
   if(App._imgDbP) return App._imgDbP;
   App._imgDbP=new Promise((res,rej)=>{
-    const rq=indexedDB.open(App.IMG_IDB,2);
+    const rq=indexedDB.open(App.IMG_IDB,3);
     rq.onupgradeneeded=function(){
       const db=rq.result;
       if(!db.objectStoreNames.contains(App.IMG_STORE)) db.createObjectStore(App.IMG_STORE);
       if(!db.objectStoreNames.contains(App.EDASSET_STORE)) db.createObjectStore(App.EDASSET_STORE);
+      if(!db.objectStoreNames.contains(App.HIST_STORE)) db.createObjectStore(App.HIST_STORE);
     };
     rq.onsuccess=()=>res(rq.result);
     rq.onerror=()=>rej(rq.error);
@@ -1125,6 +1156,50 @@ App.idbImagesClear = async function(){
     tx.objectStore(App.IMG_STORE).clear();
     tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error);
   });
+};
+// ---- 0.7b 历史记录：方案生成快照（IndexedDB），最多保留 HIST_MAX 条 ----
+// 每条记录自带「导出时」的模板快照与图片副本：恢复不依赖模板库/素材库现状，
+// 已生成方案里只要换一张图重新生成即可，无需重排整套方案。
+App.HIST_MAX=20;
+App.HIST_TPL_KEY="xhs_hist_tpls_v1";
+App.histTplsLoad=function(){
+  try{ App.state.histTpls=JSON.parse(localStorage.getItem(App.HIST_TPL_KEY))||{}; }
+  catch(e){ App.state.histTpls={}; }
+};
+App.histTplsSave=function(){
+  try{ localStorage.setItem(App.HIST_TPL_KEY, JSON.stringify(App.state.histTpls||{})); }catch(e){}
+};
+App.idbHistPut = async function(rec){
+  if(!App._compat.idb) return;
+  const db=await App.imgDb();
+  await new Promise((res,rej)=>{
+    const tx=db.transaction(App.HIST_STORE,"readwrite");
+    try{ tx.objectStore(App.HIST_STORE).put(rec, rec.uid); }catch(e){}
+    tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error); tx.onabort=()=>rej(tx.error);
+  });
+};
+App.idbHistAll = async function(){
+  if(!App._compat.idb) return [];
+  const db=await App.imgDb();
+  return await new Promise((res,rej)=>{
+    const tx=db.transaction(App.HIST_STORE), rq=tx.objectStore(App.HIST_STORE).getAll();
+    rq.onsuccess=()=>res(rq.result||[]); rq.onerror=()=>rej(rq.error);
+  });
+};
+App.idbHistDelete = async function(uids){
+  if(!uids || !uids.length || !App._compat.idb) return;
+  const db=await App.imgDb();
+  await new Promise((res,rej)=>{
+    const tx=db.transaction(App.HIST_STORE,"readwrite"), st=tx.objectStore(App.HIST_STORE);
+    uids.forEach(u=>{ try{ st.delete(u); }catch(e){} });
+    tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error);
+  });
+};
+App.idbHistPrune = async function(){
+  const all=await App.idbHistAll();
+  if(all.length<=App.HIST_MAX) return;
+  all.sort((a,b)=>(b.ts||0)-(a.ts||0));
+  await App.idbHistDelete(all.slice(App.HIST_MAX).map(r=>r.uid));
 };
 // 工坊样机大图 → 独立 IDB 存储（不放 localStorage，避免挤爆配额）
 App.idbEdAssetsPut = async function(entries){ // entries: [[uid,dataUrl],...]
@@ -1464,7 +1539,7 @@ App.WIZ_STEPS = [
   {sel:"#tplGrid", title:"第 2 步 · 按顺序依次点模板",
    text:"在模板库里，按你发笔记时配图的先后顺序依次点击模板卡片；每点一张就带编号加入右侧方案，可连续点多张。排错了用行内 ▲▼ 调整、✕ 移除。"},
   {sel:"#setsWrap", title:"第 3 步 · 点「生成」",
-   text:"排好顺序后，点配图方案卡右上角红色「🚀 生成」按钮，素材会按顺序逐页套入模板，生成整套配图。"},
+   text:"排好顺序后，点方案工作台卡右上角红色「🚀 生成」按钮，素材会按顺序逐页套入模板，生成整套配图。"},
   {sel:"#setsWrap", title:"第 4 步 · 预览、检查与修改",
    text:"点「👁 检查」逐页预览输出效果：可替换配图、换整页模板、修改文字和颜色，改完点「💾 保存修改」。右下角的身份码每张配图都唯一。"},
   {sel:"#exportCard", title:"第 5 步 · 选择方式输出",
@@ -1673,6 +1748,7 @@ App.dismissNewVersion = function(){
 App.state = {
   images: [], sets: [], activeSet: 0,
   templates: [], customTemplates: [], presetTemplates: [],
+  histTpls: {},   // 历史方案恢复用的模板快照（key=tplId；不进模板库 UI，tplById 兜底命中）
   tplMeta: { order:[], used:{}, star:{}, defaultId:null },
   tplZone: "preset", tplFilter: "all", tplSearch: "", tplSort: "manual",
   presetMain: false, presetTail: false, uploadPool: "main",   // 预指定主图/尾图：素材分主图/尾图/普通三池
@@ -2022,6 +2098,7 @@ App.renderImages = function(){
   const sec=(title,list,pool)=>`
     <div class="pool-sec">
       <div class="pool-head"><b>${title}</b><span class="small muted">（${list.length} 张，点击素材角标可切换归属）</span></div>
+
       <div class="img-strip">${list.map((im,i)=>App._imgThumbHTML(im,i,pool)).join("") || '<span class="small muted" style="padding:2px 2px 8px">暂无</span>'}</div>
     </div>`;
   grid.innerHTML = counts.map(c=>{
@@ -2179,6 +2256,7 @@ App.restoreSession = async function(){
       return {uid:im.uid,name:im.name,hash:im.hash,dataUrl:im.dataUrl,img:i,main:!!im.main,tail:!!im.tail};
     });
   }catch(e){ App.reportError("session-restore-imgs",e); App.toast("部分素材恢复失败，可重新上传"); }
+  App.histTplsLoad();   // 历史方案恢复用的模板快照（刷新后仍可渲染恢复的方案）
 };
 
 // ================= F. 模板存储 =================
@@ -2436,7 +2514,7 @@ App.runImport = async function(){
 /*__APP_JS__*/
 
 // ================= J. Canvas 渲染引擎 =================
-App.tplById = id => App.state.templates.find(t=>t.id===id) || null;
+App.tplById = id => App.state.templates.find(t=>t.id===id) || (App.state.histTpls && App.state.histTpls[id]) || null;
 App.ratioCss = ratio => { const [w,h]=ratio.split(":"); return `${w} / ${h}`; };
 
 App.rrPath = function(ctx,x,y,w,h,r){
@@ -3386,6 +3464,9 @@ App.renameSets = function(si){
   const v = App.$("#setTitle-"+si)?.value;
   if(v!==undefined){ App.state.sets[si].name=v||("方案 "+(si+1)); App.saveSession(); }
 };
+App.focusSetTitle = function(si){
+  const el=App.$("#setTitle-"+si); if(el){ el.focus(); try{ el.select(); }catch(e){} }
+};
 App.setActiveSet = function(si){
   if(App.state.activeSet!==si){ App.state.activeSet=si; App.renderSets(); }
 };
@@ -3531,6 +3612,7 @@ App.generateSetBtn = App.guardAsync("generateSet", async function(si){
     App.bindSetSlots(s);
     await App.generateSetsAsync([si], (cur,total)=>App.updateJob(cur,total));
     App.renderSets(); App.saveSession();
+    App.histRecord(s);   // 生成成功 → 记入历史（最近 20 条，同方案覆盖更新）
     const miss=s.pages.reduce((n,p)=>n+p.slots.filter(u=>!u).length,0);
     if((s.genErrors||[]).length) App.toast(`有 ${s.genErrors.length} 页渲染失败，可重新生成`);
     else App.toast(miss
@@ -3538,6 +3620,139 @@ App.generateSetBtn = App.guardAsync("generateSet", async function(si){
       :`已生成 ${s.pages.length} 页配图，可以点「检查」预览了`);
   }finally{ App.hideJob(); }
 });
+
+// ================= E2. 方案历史记录（生成快照 / 详情 / 一键恢复） =================
+// 生成成功时把整套方案（模板快照 + 图片副本 + 图位绑定 + 文字改写）存入 IndexedDB，
+// 最近 20 条；同方案重复生成按 uid 覆盖更新。恢复时整体追加到工作台末尾。
+App.histRecord = function(s){
+  try{
+    if(!s || !s.pages || !s.pages.length) return;
+    const uids=new Set(); s.pages.forEach(p=>(p.slots||[]).forEach(u=>{ if(u) uids.add(u); }));
+    const images=App.state.images.filter(im=>uids.has(im.uid))
+      .map(im=>({uid:im.uid, name:im.name||"图片", hash:im.hash||"", dataUrl:im.dataUrl||"", main:!!im.main, tail:!!im.tail}));
+    const pages=s.pages.map(p=>{
+      const tpl=App.tplById(p.tplId);
+      if(!tpl) return null;
+      return {tplId:p.tplId, tplSnap:JSON.parse(JSON.stringify(tpl)),
+        slots:(p.slots||[]).slice(),
+        texts:JSON.parse(JSON.stringify(p.texts||{})),
+        colors:JSON.parse(JSON.stringify(p.colors||{}))};
+    }).filter(Boolean);
+    if(!pages.length) return;
+    const rec={uid:s.uid, ts:Date.now(), name:s.name||"未命名方案", pages, images};
+    App.idbHistPut(rec).then(()=>App.idbHistPrune()).catch(()=>{});
+  }catch(e){ App.reportError("hist-record",e); }
+};
+App._histCache=[];
+App.histFmtTime = function(ts){
+  try{ const d=new Date(ts), p2=n=>String(n).padStart(2,"0");
+    return `${d.getMonth()+1}月${d.getDate()}日 ${p2(d.getHours())}:${p2(d.getMinutes())}`; }
+  catch(e){ return ""; }
+};
+App.openHist = async function(){
+  App.$("#histView").classList.add("show");
+  App._histCache = await App.idbHistAll();
+  App._histCache.sort((a,b)=>(b.ts||0)-(a.ts||0));
+  App.histRenderList();
+};
+App.closeHist = function(){ App.$("#histView").classList.remove("show"); };
+App.histRenderList = function(){
+  App.$("#histBack").style.display="none";
+  const host=App.$("#histBody");
+  if(!App._compat.idb){ host.innerHTML='<div class="empty-hint">当前浏览器不支持本地数据库，无法使用历史记录</div>'; return; }
+  if(!App._histCache.length){
+    host.innerHTML=`<div class="empty-hint">还没有历史记录<br><span class="small muted">方案「生成」成功后会自动记入这里（最近 ${App.HIST_MAX} 条），点击详情可查看每页快照，或整体恢复到工作台</span></div>`;
+    return;
+  }
+  host.innerHTML = App._histCache.map(r=>{
+    const tpls=new Set(r.pages.map(p=>p.tplId)).size;
+    return `<div class="hist-item">
+      <div class="hi-main"><b>${App.esc(r.name||"未命名方案")}</b>
+        <span class="small muted">${App.histFmtTime(r.ts)} · ${r.pages.length} 页 · ${tpls} 套模板 · ${(r.images||[]).length} 张图</span></div>
+      <div class="hi-ops">
+        <button onclick="App.histOpenDetail('${r.uid}')">👁 详情</button>
+        <button class="primary" onclick="App.histRestore('${r.uid}')">↺ 恢复到工作台</button>
+        <button class="icon-only" title="删除该记录" onclick="App.histDelete('${r.uid}')">🗑</button>
+      </div></div>`;
+  }).join("");
+};
+App.histOpenDetail = async function(uid){
+  const rec=App._histCache.find(r=>r.uid===uid); if(!rec) return;
+  App.$("#histBack").style.display="inline-block";
+  const host=App.$("#histBody");
+  host.innerHTML='<div class="empty-hint">正在渲染快照…</div>';
+  // 现场渲染每页缩略图：全部使用快照数据，不依赖当前模板库/素材库
+  const thumbs=await App.histDetailThumbs(rec);
+  host.innerHTML = `<div class="hist-detail">
+    <h3 style="margin:0 0 4px">${App.esc(rec.name||"未命名方案")}</h3>
+    <div class="small muted" style="margin-bottom:10px">${App.histFmtTime(rec.ts)} · 共 ${rec.pages.length} 页 · 快照自带模板与图片，可整体恢复到工作台</div>
+    ${rec.pages.map((p,pi)=>`<div class="hist-page">
+      ${thumbs[pi]?`<img src="${thumbs[pi]}">`:'<div class="hist-page-noimg">缩略图渲染失败</div>'}
+      <div class="hp-meta"><b>第 ${pi+1} 页</b> · ${App.esc((p.tplSnap&&p.tplSnap.name)||"模板")}${(p.tplSnap&&p.tplSnap.ratio)?"（"+p.tplSnap.ratio+"）":""}
+        <div class="small muted" style="margin-top:4px">${App.histSlotDesc(rec,pi)}</div></div>
+    </div>`).join("")}
+  </div>`;
+};
+App.histDetailThumbs = async function(rec){
+  const cache={};
+  const im2obj=im=>{ if(!im) return null; if(!cache[im.uid]){ const i=new Image(); i.src=im.dataUrl; cache[im.uid]=i; } return {img:cache[im.uid]}; };
+  const used=[...new Set(rec.pages.flatMap(p=>p.slots||[]).filter(Boolean))];
+  for(const u of used){ const im=(rec.images||[]).find(x=>x.uid===u); if(im&&cache[im.uid]){ try{ await cache[im.uid].decode(); }catch(e){} } }
+  return rec.pages.map(p=>{
+    try{
+      const imgs=(p.slots||[]).map(u=>im2obj((rec.images||[]).find(x=>x.uid===u)));
+      const cv=App.renderPageCanvas(p.tplSnap, imgs, p.texts||{}, p.colors||{});
+      const tc=document.createElement("canvas"); tc.width=200; tc.height=Math.max(1,Math.round(200*cv.height/Math.max(1,cv.width)));
+      tc.getContext("2d").drawImage(cv,0,0,tc.width,tc.height);
+      const d=tc.toDataURL("image/jpeg",0.72); tc.width=0; tc.height=0;
+      return d;
+    }catch(e){ return ""; }
+  });
+};
+App.histSlotDesc = function(rec,pi){
+  const p=rec.pages[pi];
+  const names=(p.slots||[]).map((u,i)=>{
+    const im=(rec.images||[]).find(x=>x.uid===u);
+    return `图位${i+1}←${im?im.name:"空"}`;
+  });
+  const tN=p.texts?Object.keys(p.texts).length:0;
+  const cN=p.colors?Object.keys(p.colors).length:0;
+  return `${names.length?App.esc(names.join("，")):"无图位"}${tN?` · 改字 ${tN} 处`:""}${cN?` · 改色 ${cN} 处`:""}`;
+};
+App.histRestore = async function(uid){
+  const rec=App._histCache.find(r=>r.uid===uid); if(!rec) return;
+  try{
+    // 1) 图片副本合入素材库（同 uid 已存在则复用，不重复）
+    const have=new Set(App.state.images.map(im=>im.uid));
+    const add=[];
+    (rec.images||[]).forEach(im=>{
+      if(have.has(im.uid)) return;
+      const i=new Image(); i.src=im.dataUrl;
+      const o={uid:im.uid, name:im.name||"图片", hash:im.hash||"", dataUrl:im.dataUrl, img:i, main:!!im.main, tail:!!im.tail};
+      App.state.images.push(o); add.push(o);
+    });
+    if(add.length) await App.idbImagesPutAll(add);
+    // 2) 模板快照登记（tplById 兜底命中；刷新后由 histTplsLoad 恢复）
+    (rec.pages||[]).forEach(p=>{ if(p.tplSnap && !App.state.histTpls[p.tplId]) App.state.histTpls[p.tplId]=p.tplSnap; });
+    App.histTplsSave();
+    // 3) 整体追加到工作台末尾（第 n 次恢复按当前数量与顺序向后顺延）
+    const s=App.newSet(rec.name||"历史方案");
+    s.pages=(rec.pages||[]).map(p=>({tplId:p.tplId, slots:(p.slots||[]).slice(),
+      texts:JSON.parse(JSON.stringify(p.texts||{})), colors:JSON.parse(JSON.stringify(p.colors||{})), idCode:null}));
+    App.state.sets.push(s);
+    App.state.activeSet=App.state.sets.length-1;
+    App.renderImages(); App.renderSets(); App.saveSession();
+    App.closeHist();
+    App.$("#setCard").scrollIntoView({behavior:"smooth",block:"start"});
+    App.toast(`已把「${s.name}」恢复到工作台末尾（第 ${App.state.sets.length} 套），换图后点「生成」即可`);
+  }catch(e){ App.reportError("hist-restore",e); App.toast("恢复失败，请重试"); }
+};
+App.histDelete = async function(uid){
+  if(!confirm("删除这条历史记录？（不影响工作台中的方案）")) return;
+  await App.idbHistDelete([uid]);
+  App._histCache=App._histCache.filter(r=>r.uid!==uid);
+  App.histRenderList(); App.toast("已删除该历史记录");
+};
 // 图位按顺序绑定素材：
 // - 未开启「预指定主图/尾图」：所有素材统一填充，每个素材在本方案内首次出现的绑定予以保留，
 //   空槽或重复绑定的槽位按顺序改配给尚未使用的素材；槽位比素材多时才从头循环。
@@ -3658,6 +3873,7 @@ App.renderSets = function(){
         ${App.state.manageMode?`<input type="checkbox" class="chk" ${App.state.selectedSets.has(s.uid)?"checked":""} onclick="event.stopPropagation();App.toggleSelectSet(${si},this.checked)">`:""}
         <span class="caret" onclick="event.stopPropagation();App.toggleSetCollapsed(${si})" title="${s.collapsed?"展开本方案":"折叠本方案"}">${s.collapsed?"▸ 展开":"▾ 折叠"}</span>
         <input class="set-title" id="setTitle-${si}" value="${App.esc(s.name)}" onfocus="App.setActiveSet(${si})" oninput="App.renameSets(${si})" onclick="event.stopPropagation()">
+        <span class="small muted" style="flex-shrink:0;cursor:text" onclick="event.stopPropagation();App.focusSetTitle(${si})" title="点击编辑方案名">✏️ 可重命名</span>
         <span class="pill">${s.pages.length}页模板</span>
         <span class="pill">${sumText}</span>
         ${mainPill}
@@ -4748,7 +4964,7 @@ App.renderEditorProps = function(){
       ${colorFld(ph,"strokeColor","描边色","#1f2329")}
       ${alphaFld(ph,"strokeA","描边不透明度")}
       ${strokeFld(ph)}
-      <h4 style="margin-top:4px">底色 / 边框（底色留空即为纯文字）</h4>
+      <h4 style="margin-top:4px">底色 / 边框 <span style="font-weight:400;font-size:11px;color:var(--ink3)">（底色留空即为纯文字）</span></h4>
       ${colorFld(ph,"bg","底色","#ffffff")}
       ${alphaFld(ph,"bgA","底色不透明度")}
       ${colorFld(ph,"borderColor","边框色","#b9c4ee")}
@@ -5020,7 +5236,7 @@ App.renderLeft=function(){
       <button class="primary" style="width:100%" onclick="App.addPH('img')">＋ 添加图片位</button>
       <div class="ratio-chips">${chips}</div>
       <div style="height:6px"></div>
-      <button class="primary" style="width:100%;white-space:normal;line-height:1.4;padding:7px 8px" onclick="App.addPH('tbox')">🔤 添加文字（文字＋底色＋边框＋阴影）</button>
+      <button class="primary" style="width:100%;padding:7px 8px" onclick="App.addPH('tbox')"><span style="display:block;white-space:nowrap">🔤 添加文字</span><span style="display:block;font-size:10px;opacity:.85;margin-top:1px">（文字＋底色＋边框＋阴影）</span></button>
       <div class="upload-tip">不想要底色？右侧把「底色」设为无填充，就是纯文字。</div>
       <div style="height:6px"></div>
       <button class="primary" style="width:100%" onclick="App.addPH('shape','round')">🔷 添加形状</button>
@@ -5628,7 +5844,7 @@ App.initOutputDir = async function(){
   }catch(e){}
 };
 App.updateOutdirBar = function(h){
-  App.$("#outLocText").textContent = h ? `已绑定：${h.name}（配图将保存到这里）` : "未设置（首次导出时会弹出系统文件夹选择框）";
+  App.$("#outLocText").innerHTML = h ? `已绑定：${App.esc(h.name)} <span style="font-weight:400;font-size:11px;color:var(--ink3)">（配图将保存到这里）</span>` : `未设置 <span style="font-weight:400;font-size:11px;color:var(--ink3)">（首次导出时会弹出系统文件夹选择框）</span>`;
   App.$("#btnForgetOut").style.display = h ? "inline-block" : "none";
 };
 App.chooseOutputDir = async function(){
