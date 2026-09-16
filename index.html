@@ -69,6 +69,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--brand)}
 #topbar{background:linear-gradient(90deg,#5656d8,#6e6ef0 55%,#8678f2);color:#fff;padding:10px 20px;display:flex;align-items:center;gap:14px}
 #topbar h1{font-size:18px;font-weight:700;letter-spacing:1px}
 #topbar .flow{font-size:12px;opacity:.88;margin-top:2px}
+#topbar .flow #verTag{margin-left:6px;opacity:.82;font-weight:600;letter-spacing:.3px}
 #topbar .spacer{flex:1}
 #topbar button{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:18px;padding:6px 16px;font-size:12px}
 #topbar button:hover{background:rgba(255,255,255,.26)}
@@ -95,6 +96,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--brand)}
 .img-thumb{position:relative;flex:0 0 64px;width:64px;height:64px;border-radius:8px;overflow:hidden;border:1px solid var(--line)}
 .pool-sec{margin-bottom:10px}
 .pool-head{font-size:12px;margin-bottom:4px;display:flex;align-items:center;gap:6px}
+.pool-head b{font-weight:700}
+.pool-head .small{font-size:11px;line-height:1.45}
 .pool-badge{position:absolute;top:2px;left:2px;font-size:9px;font-weight:700;padding:1px 4px;border-radius:3px;border:none;cursor:pointer;color:#fff;line-height:1.4;z-index:2}
 .pool-badge.main{background:#ff5b7a}
 .pool-badge.tail{background:#e8862e}
@@ -151,12 +154,14 @@ body.is-admin #btnTplSel{display:inline-block}
 .set-box{border:1.5px solid var(--line);border-radius:13px;overflow:hidden;background:#fff;transition:.15s}
 .set-box.active{border-color:var(--brand);box-shadow:0 0 0 3px rgba(96,96,232,.08)}
 .set-box.manage-check{padding-left:0}
-.set-top{display:flex;align-items:center;gap:10px;padding:11px 14px;background:#fafbfe;border-bottom:1px solid var(--line);cursor:default;flex-wrap:nowrap;min-width:0}
+.set-top{display:flex;align-items:center;gap:7px 10px;padding:11px 14px;background:#fafbfe;border-bottom:1px solid var(--line);cursor:default;flex-wrap:wrap;min-width:0}
 .set-box.active .set-top{background:var(--brand-l)}
 .caret{color:var(--brand-d);cursor:pointer;user-select:none;white-space:nowrap;font-size:12px;flex:0 0 auto;padding:3px 8px;border-radius:7px;background:#eef0fe}
 .caret:hover{background:#e2e5fd}
 .set-title{font-weight:700;font-size:15px;border:1px solid transparent;background:transparent;padding:3px 6px;border-radius:7px;max-width:150px;min-width:64px;flex:0 1 auto}
-.set-top .pill{flex-shrink:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.set-top .pill{flex-shrink:0}
+.set-top .chk{flex-shrink:0}
+.set-ops{display:flex;align-items:center;gap:10px;flex-shrink:0}
 .set-top .spacer{flex:1 1 12px}
 .set-top button{flex-shrink:0}
 .set-title:hover{background:#eaeaf8}
@@ -614,7 +619,7 @@ body.is-admin #btnTplSel{display:inline-block}
           <b>预指定主图</b>
           <input type="checkbox" id="presetTailChk" onchange="App.togglePresetTail(this.checked)" style="margin-left:6px">
           <b>预指定尾图</b>
-          <span class="small muted" style="color:#888">开启后素材分区上传：主图位 / 尾图位只填对应素材，避免与普通位重复</span>
+          <span class="small muted" style="flex-basis:100%">开启后素材分区上传：主图位 / 尾图位只填对应素材，避免与普通位重复</span>
         </label>
         <div id="poolBar" style="display:none;margin-bottom:8px">
           <div class="seg" id="poolSeg"></div>
@@ -2017,7 +2022,7 @@ App.renderImages = function(){
   const sec=(title,list,pool)=>`
     <div class="pool-sec">
       <div class="pool-head"><b>${title}</b><span class="small muted">（${list.length} 张，点击素材角标可切换归属）</span></div>
-      <div class="img-strip">${list.map((im,i)=>App._imgThumbHTML(im,i,pool)).join("") || '<span class="small muted" style="padding:4px">暂无</span>'}</div>
+      <div class="img-strip">${list.map((im,i)=>App._imgThumbHTML(im,i,pool)).join("") || '<span class="small muted" style="padding:2px 2px 8px">暂无</span>'}</div>
     </div>`;
   grid.innerHTML = counts.map(c=>{
     const nm = c.pool==="main"?"主图素材" : c.pool==="tail"?"尾图素材" : "普通素材";
@@ -3660,9 +3665,11 @@ App.renderSets = function(){
         <span class="pill ${totalSlots>imgN?(imgN?"warn":"danger"):""}" ${totalSlots>imgN&&imgN?`title="素材不够，生成时自动循环使用"`:""}>素材${totalSlots}/${imgN}${totalSlots>imgN&&imgN?" 循环用":""}</span>
         ${statusPill}
         <span class="spacer"></span>
-        <button class="pink" onclick="event.stopPropagation();App.generateSetBtn(${si})">🚀 生成</button>
-        <button class="outline" onclick="event.stopPropagation();App.inspectSet(${si})">👁 检查</button>
-        <button class="icon-only" title="删除方案" style="color:var(--pink)" onclick="event.stopPropagation();App.removeSet(${si})">✕</button>
+        <span class="set-ops">
+          <button class="pink" onclick="event.stopPropagation();App.generateSetBtn(${si})">🚀 生成</button>
+          <button class="outline" onclick="event.stopPropagation();App.inspectSet(${si})">👁 检查</button>
+          <button class="icon-only" title="删除方案" style="color:var(--pink)" onclick="event.stopPropagation();App.removeSet(${si})">✕</button>
+        </span>
       </div>
       <div class="page-list ${s.collapsed?"collapsed":""}" onclick="event.stopPropagation()">
         ${s.pages.length?rows:`<div class="empty-queue">还没有模板 —— 点左下模板库的任意卡片，就会出现在这里排队</div>`}
@@ -5013,7 +5020,7 @@ App.renderLeft=function(){
       <button class="primary" style="width:100%" onclick="App.addPH('img')">＋ 添加图片位</button>
       <div class="ratio-chips">${chips}</div>
       <div style="height:6px"></div>
-      <button class="primary" style="width:100%" onclick="App.addPH('tbox')">🔤 添加文字（文字＋底色＋边框＋阴影）</button>
+      <button class="primary" style="width:100%;white-space:normal;line-height:1.4;padding:7px 8px" onclick="App.addPH('tbox')">🔤 添加文字（文字＋底色＋边框＋阴影）</button>
       <div class="upload-tip">不想要底色？右侧把「底色」设为无填充，就是纯文字。</div>
       <div style="height:6px"></div>
       <button class="primary" style="width:100%" onclick="App.addPH('shape','round')">🔷 添加形状</button>
