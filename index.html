@@ -154,42 +154,34 @@ body.is-admin #btnTplSel{display:inline-block}
 .set-box{border:1.5px solid var(--line);border-radius:13px;overflow:hidden;background:#fff;transition:.15s}
 .set-box.active{border-color:var(--brand);box-shadow:0 0 0 3px rgba(96,96,232,.08)}
 .set-box.manage-check{padding-left:0}
-.set-top{display:flex;align-items:center;gap:7px 10px;padding:11px 14px;background:#fafbfe;cursor:default;flex-wrap:wrap;min-width:0}
+.set-top{display:flex;align-items:center;gap:7px 10px;padding:11px 14px;background:#fafbfe;cursor:default;flex-wrap:wrap;min-width:0;border-bottom:1px solid var(--line)}
 .set-box.active .set-top{background:var(--brand-l)}
 .caret{color:var(--brand-d);cursor:pointer;user-select:none;white-space:nowrap;font-size:12px;flex:0 0 auto;padding:3px 8px;border-radius:7px;background:#eef0fe}
 .caret:hover{background:#e2e5fd}
 .set-title{font-weight:700;font-size:15px;border:1px solid transparent;background:transparent;padding:3px 6px;border-radius:7px;max-width:150px;min-width:64px;flex:0 1 auto}
 .set-top .pill{flex-shrink:0}
 .set-top .chk{flex-shrink:0}
-/* 操作按钮固定在方案卡头部右下角：无论名称/徽章占几行，始终整行靠右 */
-.set-foot{display:flex;justify-content:flex-end;align-items:center;padding:9px 14px;background:#fafbfe;border-bottom:1px solid var(--line)}
-.set-box.active .set-foot{background:var(--brand-l)}
-.set-ops{display:flex;align-items:center;gap:10px;flex-shrink:0}
-.set-foot button{flex-shrink:0}
+/* 操作按钮组固定在卡头行右侧：与名称/徽章同排靠右，空间不足换行时仍保持右对齐 */
+.set-ops{display:flex;align-items:center;gap:10px;flex-shrink:0;margin-left:auto}
+.set-ops button{flex-shrink:0}
 .set-title:hover{background:#eaeaf8}
 .pill{font-size:11px;border-radius:20px;padding:3px 10px;background:var(--gray-pill);color:var(--ink2);white-space:nowrap}
 .pill.ok{background:var(--ok-bg);color:var(--ok-ink)}
 .pill.warn{background:var(--warn-bg);color:var(--warn-ink)}
 .pill.danger{background:var(--danger-bg);color:var(--danger-ink)}
-.page-list{padding:8px 14px;display:grid;grid-template-columns:1fr;gap:0}
+.page-list{padding:10px 14px;display:grid;grid-template-columns:1fr;gap:9px}
 .page-list.collapsed{display:none}
 .page-list .empty-queue{grid-column:1/-1}
-.page-row{display:flex;align-items:flex-start;gap:12px;padding:10px 2px;border-bottom:1px dashed #eef0f6;min-width:0}
+/* 模板行：紧凑单行（编号徽章 + 名称 + 右侧操作），与上传模块罗列方式一致 */
+.page-row{display:flex;align-items:center;gap:11px;padding:11px 14px;background:#fff;border:1px solid var(--line);border-radius:12px;min-width:0}
 .page-row .p-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
-.page-row .p-info{flex:1;min-width:0;overflow:hidden;padding-top:1px}
-.page-row .p-info .p-sub{display:flex;align-items:center;gap:6px;margin-top:4px}
-.page-row:last-child{border-bottom:none}
-.p-num{width:24px;height:24px;border-radius:50%;background:var(--brand);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:0 0 24px;margin-top:31px}
-.p-thumb{flex:0 0 86px;width:86px;border-radius:9px;overflow:hidden;border:1px solid var(--line);position:relative;background:#f2f4fc;box-shadow:0 1px 5px rgba(30,40,90,.07)}
-.p-thumb img,.p-thumb .mini-tpl{width:100%;height:100%;display:block;object-fit:cover}
-.p-thumb .mini-tpl .ph{position:absolute;background:#d4dcf6;border:1px solid #b9c4ee}
-.p-thumb .mini-tpl .ph.t{background:#e6e1fa}
-.p-thumb .stale{position:absolute;inset:0;background:rgba(255,255,255,.72);color:var(--warn-ink);font-size:9px;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.2}
-.p-thumb .fresh-dot{position:absolute;right:3px;bottom:3px;width:14px;height:14px;border-radius:50%;background:var(--green);color:#fff;font-size:9px;line-height:14px;text-align:center;box-shadow:0 0 0 2px #fff}
-.p-name{font-weight:600;font-size:13.5px}
-.p-ratio{color:var(--ink3);font-size:11px;font-weight:400;margin-left:6px}
-.p-miss{color:var(--danger-ink);font-size:11px;white-space:nowrap;flex-shrink:0}
-.p-ops{margin-left:auto;align-self:center;display:flex;align-items:center;gap:5px;flex-shrink:0}
+.page-row .p-info{flex:1;min-width:0;overflow:hidden}
+.p-num{width:24px;height:24px;border-radius:50%;background:var(--brand);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:0 0 24px}
+.p-name{font-weight:600;font-size:14px;display:flex;align-items:baseline;gap:2px;min-width:0}
+.p-name>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.p-ratio{color:var(--ink3);font-size:11px;font-weight:400;margin-left:6px;flex-shrink:0}
+.p-miss{color:var(--danger-ink);font-size:11px;white-space:nowrap;flex-shrink:0;margin-left:8px}
+.p-ops{margin-left:auto;display:flex;align-items:center;gap:5px;flex-shrink:0}
 .p-ops .pill{flex-shrink:0}
 .p-ops .icon-only{padding:4px 7px;font-size:12px}
 .empty-queue{padding:26px;text-align:center;color:var(--ink3);font-size:13px;border:2px dashed #e2e5f2;border-radius:11px;margin:6px 0}
@@ -923,7 +915,7 @@ const CURRENT_PASSWORD_HASH = "bba1b366a8205a4ccbe8277d46e21497cf1a93d3cd40c996c
 const AUTH_SESSION_KEY = "xhs_auth_session";
 const AUTH_PERM_KEY    = "xhs_auth_perm_v1";
 const GUIDE_KEY = "xhs_guide_seen_v1";
-const TOOL_VERSION = "1.0.10";
+const TOOL_VERSION = "1.0.11";
 const REMOTE_VERSION_URL = "./version.json";
 const VERSION_SEEN_KEY = "xhs_last_version";
 const VERSION_SEEN_KEY_OLD = "xhs_seen_version_v1";
@@ -3968,17 +3960,10 @@ App.renderSets = function(){
       const n=tpl?App.tplImageCount(tpl):0;
       const filled=(p.slots||[]).filter(u=>u&&App.imageByUid(u)).length;
       const missing=n-filled;
-      const thumb=(s.generated&&s.thumbs[pi])
-        ? `<img src="${s.thumbs[pi]}" alt=""><span class="fresh-dot" title="已生成">✓</span>${s.dirty?`<span class="stale">待更新</span>`:""}`
-        : `<div class="mini-tpl" style="position:absolute;inset:0;aspect-ratio:auto" id="qth-${si}-${pi}">${tpl?App.miniTplHTML(tpl):""}</div>`;
       return `<div class="page-row">
         <span class="p-num">${pi+1}</span>
-        <div class="p-thumb" style="aspect-ratio:${tpl?App.ratioCss(tpl.ratio):"3 / 4"}">${thumb}</div>
         <div class="p-info">
-          <div class="p-name">${App.esc(tpl?tpl.name:"已失效模板")}<span class="p-ratio">${tpl?tpl.ratio:""}</span></div>
-          <div class="p-sub">
-            ${missing>0?`<span class="p-miss">缺${missing}图</span>`:``}
-          </div>
+          <div class="p-name"><span>${App.esc(tpl?tpl.name:"已失效模板")}</span><span class="p-ratio">${tpl?tpl.ratio:""}</span>${missing>0?`<span class="p-miss">缺${missing}图</span>`:``}</div>
         </div>
         <div class="p-ops">
           <span class="pill">${n}图</span>
@@ -4000,8 +3985,6 @@ App.renderSets = function(){
         ${tailPill}
         <span class="pill ${totalSlots>imgN?(imgN?"warn":"danger"):""}" ${totalSlots>imgN&&imgN?`title="素材不够，生成时自动循环使用"`:""}>素材${totalSlots}/${imgN}${totalSlots>imgN&&imgN?" 循环用":""}</span>
         ${statusPill}
-      </div>
-      <div class="set-foot" onclick="event.stopPropagation()">
         <span class="set-ops">
           <button class="pink" onclick="event.stopPropagation();App.generateSetBtn(${si})">🚀 生成</button>
           <button class="outline" onclick="event.stopPropagation();App.inspectSet(${si})">👁 检查</button>
@@ -4014,10 +3997,6 @@ App.renderSets = function(){
       </div>
     </div>`;
   }).join("");
-  // 未生成的方案行：用出图引擎渲染统一缩略图（与生成结果一致）
-  App.state.sets.forEach((s,si)=>{ if(s.generated) return;
-    s.pages.forEach((p,pi)=>{ const tpl=App.tplById(p.tplId); if(tpl) App.fillThumb(`qth-${si}-${pi}`,tpl); });
-  });
   // 同步「全部折叠/展开」按钮文案
   const btnAll=App.$("#btnAllSets");
   if(btnAll) btnAll.textContent = (App.state.sets.length && App.state.sets.every(s=>s.collapsed)) ? "全部展开 ▾" : "全部折叠 ▴";
