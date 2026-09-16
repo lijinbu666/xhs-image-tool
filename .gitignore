@@ -4,6 +4,10 @@ _*.png
 _*.json
 _*.txt
 _d*.py
+_tut_*
+
+# 本地教程交付物（不上传）
+小红书配图工具-*.pdf
 
 # Python 后端（仅本地开发用，GitHub Pages 不需要）
 mockup_studio/
