@@ -905,7 +905,7 @@ const CURRENT_PASSWORD_HASH = "bba1b366a8205a4ccbe8277d46e21497cf1a93d3cd40c996c
 const AUTH_SESSION_KEY = "xhs_auth_session";
 const AUTH_PERM_KEY    = "xhs_auth_perm_v1";
 const GUIDE_KEY = "xhs_guide_seen_v1";
-const TOOL_VERSION = "1.0.8";
+const TOOL_VERSION = "1.0.9";
 const REMOTE_VERSION_URL = "./version.json";
 const VERSION_SEEN_KEY = "xhs_last_version";
 const VERSION_SEEN_KEY_OLD = "xhs_seen_version_v1";
@@ -1167,7 +1167,16 @@ App.histTplsLoad=function(){
   catch(e){ App.state.histTpls={}; }
 };
 App.histTplsSave=function(){
-  try{ localStorage.setItem(App.HIST_TPL_KEY, JSON.stringify(App.state.histTpls||{})); }catch(e){}
+  try{ localStorage.setItem(App.HIST_TPL_KEY, JSON.stringify(App.state.histTpls||{})); }
+  catch(e){
+    // 容量超限兜底：只保留当前工作台方案引用到的快照模板（保证已恢复方案的模板永远可用），再试一次
+    try{
+      const keep={};
+      App.state.sets.forEach(s=>s.pages.forEach(p=>{ const t=(App.state.histTpls||{})[p.tplId]; if(t) keep[p.tplId]=t; }));
+      App.state.histTpls=keep;
+      localStorage.setItem(App.HIST_TPL_KEY, JSON.stringify(keep));
+    }catch(e2){}
+  }
 };
 App.idbHistPut = async function(rec){
   if(!App._compat.idb) return;
@@ -1836,8 +1845,14 @@ App._ingestImageFiles = async function(files){
     const hash = await App.hashFile(f);
     return {f, hash};
   };
-  let hashed;
-  try{ hashed = await Promise.all(files.map(readOne)); }
+  // 分批哈希（每批 8 张）：100 张大图同时读入内存做 SHA-256 会瞬间撑高峰值内存
+  let hashed=[];
+  try{
+    for(let i=0;i<files.length;i+=8){
+      const part=await Promise.all(files.slice(i,i+8).map(readOne));
+      hashed=hashed.concat(part);
+    }
+  }
   catch(e){ App.reportError("upload-hash",e); return App.toast("图片读取失败，请重试"); }
   const seen = known();
   const todo=[];
@@ -3079,6 +3094,30 @@ App.makeIdCode = function(){
     +rnd.slice(0,6);
 };
 App.releasePages = function(s){ s.canvases.forEach(cv=>{ cv.width=0;cv.height=0; }); s.canvases=[]; s.thumbs=[]; };
+// ===== 极限批量内存护栏 =====
+// 全分辨率画布每张约 6MB（1080×1440），几百张同时持有会撑爆浏览器内存。
+// 超出预算时自动释放最旧方案的画布：缩略图 dataURL 保留（卡片显示不受影响），
+// 「检查」视图是实时渲染、「导出」有缺画布补渲机制，因此释放后功能完好，只是导出前会按需重渲。
+App.CANVAS_BUDGET = 40;   // 内存中最多保留 40 张全分辨率画布（约 250MB）
+App.dropSetCanvases = function(s){
+  s.canvases.forEach(cv=>{ try{ cv.width=0; cv.height=0; }catch(e){} });
+  s.canvases=[];
+};
+App.enforceCanvasBudget = function(keepSet){
+  try{
+    let total=0;
+    App.state.sets.forEach(s=>{ total+=(s.canvases||[]).length; });
+    if(total<=App.CANVAS_BUDGET) return;
+    const holders=App.state.sets
+      .filter(s=>s!==keepSet && s.canvases && s.canvases.length>0)
+      .sort((a,b)=>(a.genTs||0)-(b.genTs||0));
+    for(const s of holders){
+      if(total<=App.CANVAS_BUDGET) break;
+      total-=s.canvases.length;
+      App.dropSetCanvases(s);
+    }
+  }catch(e){ App.reportError("canvas-budget",e); }
+};
 
 // 模板几何缩略图（方案行未生成时的即时占位，随后会被 canvas 缩略图替换）
 App.miniTplHTML = function(tpl){
@@ -3484,6 +3523,17 @@ App.removeSet = function(si){
   App.state.activeSet=Math.max(0,Math.min(App.state.activeSet,App.state.sets.length-1));
   App.renderSets(); App.saveSession();
 };
+// 复制方案：深拷贝页面配置（模板引用/图位绑定/改字改色），紧跟原方案插入，保持未生成状态（点生成即可出图）
+App.copySet = function(si){
+  const src=App.state.sets[si]; if(!src) return;
+  const s=App.newSet((src.name||"未命名方案")+" ·副本");
+  s.pages=src.pages.map(p=>({tplId:p.tplId, slots:(p.slots||[]).slice(),
+    texts:JSON.parse(JSON.stringify(p.texts||{})), colors:JSON.parse(JSON.stringify(p.colors||{})), idCode:null}));
+  App.state.sets.splice(si+1,0,s);
+  App.state.activeSet=si+1;
+  App.renderSets(); App.saveSession();
+  App.toast("已复制为新方案（紧跟原方案之后），点「生成」即可出图");
+};
 
 // 模板加入当前方案排队（只入队，不生成）
 App.addTemplateToQueue = function(id){
@@ -3563,11 +3613,12 @@ App.moveQueue = function(si,pi,dir){
 };
 
 // 生成：把队列渲染成 canvas + 缩略图
-App.generateSet = function(si){
+App.generateSet = async function(si){
   const s = App.state.sets[si]; if(!s) return [];
   App.releasePages(s);
   s.genErrors=[];
-  s.pages.forEach((p,pi)=>{
+  for(let pi=0;pi<s.pages.length;pi++){
+    const p=s.pages[pi];
     let cv;
     try{
       const tpl = App.tplById(p.tplId);
@@ -3590,14 +3641,19 @@ App.generateSet = function(si){
     tc.getContext("2d").drawImage(cv,0,0,tc.width,tc.height);
     s.thumbs.push(tc.toDataURL("image/jpeg",0.72));
     tc.width=0; tc.height=0; // 释放缩略图位图（dataURL 已取出）
-  });
+    // 每页之间让出主线程：几十页的大方案批量生成时界面不假死
+    if(pi<s.pages.length-1) await new Promise(r=>setTimeout(r,0));
+  }
   s.generated=true; s.dirty=false;
+  s.genTs=Date.now();   // 用于内存护栏按「最旧先释放」回收画布
   return s.canvases;
 };
-// 多套方案分批生成：每套之间让出主线程 + 进度回调，避免批量时界面假死
+// 多套方案分批生成：每套之间让出主线程 + 进度回调，避免批量时界面假死；
+// 每套完成后执行画布内存护栏（超出预算释放最旧方案画布，缩略图保留、导出按需重渲）
 App.generateSetsAsync = async function(idxs, onProgress){
   for(let k=0;k<idxs.length;k++){
-    App.generateSet(idxs[k]);
+    await App.generateSet(idxs[k]);
+    App.enforceCanvasBudget(App.state.sets[idxs[k]]);
     if(onProgress) onProgress(k+1, idxs.length);
     if(k<idxs.length-1) await new Promise(r=>setTimeout(r,0));
   }
@@ -3732,8 +3788,9 @@ App.histRestore = async function(uid){
       App.state.images.push(o); add.push(o);
     });
     if(add.length) await App.idbImagesPutAll(add);
-    // 2) 模板快照登记（tplById 兜底命中；刷新后由 histTplsLoad 恢复）
-    (rec.pages||[]).forEach(p=>{ if(p.tplSnap && !App.state.histTpls[p.tplId]) App.state.histTpls[p.tplId]=p.tplSnap; });
+    // 2) 模板快照登记（tplById 兜底命中；刷新后由 histTplsLoad 恢复）。
+    //    以本条记录的快照为准直接覆盖：即使同 id 模板后来被编辑过，恢复结果仍与本记录导出时完全一致。
+    (rec.pages||[]).forEach(p=>{ if(p.tplSnap) App.state.histTpls[p.tplId]=p.tplSnap; });
     App.histTplsSave();
     // 3) 整体追加到工作台末尾（第 n 次恢复按当前数量与顺序向后顺延）
     const s=App.newSet(rec.name||"历史方案");
@@ -3884,6 +3941,7 @@ App.renderSets = function(){
         <span class="set-ops">
           <button class="pink" onclick="event.stopPropagation();App.generateSetBtn(${si})">🚀 生成</button>
           <button class="outline" onclick="event.stopPropagation();App.inspectSet(${si})">👁 检查</button>
+          <button class="outline" onclick="event.stopPropagation();App.copySet(${si})" title="复制本方案为新方案（含模板与图位绑定），紧跟本方案之后">⧉ 复制</button>
           <button class="icon-only" title="删除方案" style="color:var(--pink)" onclick="event.stopPropagation();App.removeSet(${si})">✕</button>
         </span>
       </div>
@@ -5425,7 +5483,8 @@ App.addPH = function(type,ratio){
   }
   let ph;
   if(type==="img"){
-    ph = {uid:App.uid(),type:"img",x:+((100-w)/2).toFixed(2),y:+((100-h)/2).toFixed(2),w:+w.toFixed(2),h:+h.toFixed(2),fit:"cover",radius:0,isMain:false,isTail:false};
+    // 从比例 chip（16:9/9:16/3:4/4:3/1:1）添加的图片位默认锁定比例：之后只能改变大小，不能改比例
+    ph = {uid:App.uid(),type:"img",x:+((100-w)/2).toFixed(2),y:+((100-h)/2).toFixed(2),w:+w.toFixed(2),h:+h.toFixed(2),fit:"cover",radius:0,isMain:false,isTail:false,lockRatio:!!ratio};
   }else if(type==="shape"){
     // 几何形状：填充/边框各自可调颜色与透明度，支持阴影；几何类型进画布后可随时切换
     const kind=(["rect","round","ellipse","triangle","diamond"].includes(ratio)?ratio:"round");
