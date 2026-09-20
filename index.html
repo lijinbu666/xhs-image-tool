@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%237c7cf0'/%3E%3Cstop offset='1' stop-color='%235b3df5'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='14' fill='url(%23g)'/%3E%3Crect x='14' y='18' width='36' height='28' rx='4' fill='none' stroke='white' stroke-width='3'/%3E%3Ccircle cx='24' cy='28' r='4' fill='white'/%3E%3Cpath d='M14 40l9-8 7 6 6-5 14 11' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23ff7eb3'/%3E%3Cstop offset='0.5' stop-color='%23ef4f6b'/%3E%3Cstop offset='1' stop-color='%23fe2c55'/%3E%3C/linearGradient%3E%3ClinearGradient id='g2' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='white' stop-opacity='0.9'/%3E%3Cstop offset='1' stop-color='white' stop-opacity='0.75'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='15' fill='url(%23g)'/%3E%3Crect x='13' y='15' width='38' height='34' rx='6' fill='none' stroke='white' stroke-width='2.5' stroke-opacity='0.5'/%3E%3Cpath d='M13 39c2-6 8-10 15-10s13 4 15 10c2 6 1 10 0 10H13c-1 0-2-4 0-10z' fill='url(%23g2)'/%3E%3Crect x='19' y='22' width='26' height='16' rx='3' fill='white' fill-opacity='0.95'/%3E%3Ccircle cx='26' cy='28' r='3' fill='%23ef4f6b'/%3E%3Cpath d='M19 34l5-4.5 4 3.5 4-3 9 7' fill='none' stroke='%23ef4f6b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <title>小红书配图便捷生成工具</title>
 <style>
 :root{
@@ -915,7 +915,7 @@ const CURRENT_PASSWORD_HASH = "bba1b366a8205a4ccbe8277d46e21497cf1a93d3cd40c996c
 const AUTH_SESSION_KEY = "xhs_auth_session";
 const AUTH_PERM_KEY    = "xhs_auth_perm_v1";
 const GUIDE_KEY = "xhs_guide_seen_v1";
-const TOOL_VERSION = "1.0.12";
+const TOOL_VERSION = "1.0.13";
 const REMOTE_VERSION_URL = "./version.json";
 const VERSION_SEEN_KEY = "xhs_last_version";
 const VERSION_SEEN_KEY_OLD = "xhs_seen_version_v1";
@@ -947,7 +947,9 @@ App.uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
 App.bytesHex = async buf => [...new Uint8Array(buf)].map(x=>x.toString(16).padStart(2,"0")).join("");
 App.sha256Text = async str => App.bytesHex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str)));
 App.hashFile = async function(file){
-  const buf = await file.slice(0, 2*1024*1024).arrayBuffer();
+  // 整文件哈希：只取前 2MB 会把「头部元数据/顶部区域相同」的多张不同大图误判为重复
+  // 调用方按每批 8 张并发，buffer 用完即回收，整文件读取内存峰值可控
+  const buf = await file.arrayBuffer();
   return App.bytesHex(await crypto.subtle.digest("SHA-256", buf));
 };
 App.esc = s => String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -1555,14 +1557,16 @@ App.closeGuide = function(){
 App.WIZ_STEPS = [
   {sel:"#imgCard", title:"第 1 步 · 上传图片",
    text:"上传方式任选、可混用：点击上传区批量选图；把图片拖进来；截图后直接 Ctrl+V 粘贴；拖入 PDF 还能勾选页面转成图片。自动去重，顺序就是后面的配图顺序。"},
-  {sel:"#tplGrid", title:"第 2 步 · 按顺序依次点模板",
-   text:"在模板库里，按你发笔记时配图的先后顺序依次点击模板卡片；每点一张就带编号加入右侧方案，可连续点多张。排错了用行内 ▲▼ 调整、✕ 移除。"},
-  {sel:"#setsWrap", title:"第 3 步 · 点「生成」",
-   text:"排好顺序后，点方案工作台卡右上角红色「🚀 生成」按钮，素材会按顺序逐页套入模板，生成整套配图。"},
-  {sel:"#setsWrap", title:"第 4 步 · 预览、检查与修改",
-   text:"点「👁 检查」逐页预览输出效果：可替换配图、换整页模板、修改文字和颜色，改完点「💾 保存修改」。右下角的身份码每张配图都唯一。"},
-  {sel:"#exportCard", title:"第 5 步 · 选择方式输出",
-   text:"全部确认后，选「📦 打包 ZIP 下载」或「📁 保存到文件夹」输出配图，第一张笔记配图就完成啦！"}
+  {sel:"#tplGrid", title:"第 2 步 · 选择模板",
+   text:"在模板库里，按你发笔记时配图的先后顺序依次点击模板卡片，每点一张就带编号加入右侧方案。选择模板的顺序就是配图的顺序，排错了可以在工作台里用 ▲▼ 调整、✕ 移除。"},
+  {sel:"#setsWrap", title:"第 3 步 · 生成并预览",
+   text:"排好顺序后，点方案卡右上角红色「🚀 生成」按钮，整套配图会按顺序生成。生成后点「👁 检查」逐页预览效果——如果某一页模板或某一张图片需要修改，可以在预览的时候继续改，改完保存即可。"},
+  {sel:"#exportCard", title:"第 4 步 · 导出成品",
+   text:"全部确认后，选「📦 打包 ZIP 下载」或「📁 保存到文件夹」输出配图，整套笔记配图就完成啦！"},
+  {sel:"#setCard .card-head .set-toolbar button:first-child", title:"✨ 进阶 · 历史记录",
+   text:"每次方案「生成」成功后，会自动存一份快照到历史记录里（最多 20 条）。点「🕘 历史」可以查看以前做过的方案，一键恢复到工作台继续修改。恢复时会把当时的图片和模板一并还原，不用担心素材丢失。"},
+  {sel:"#tplCard .card-head button:last-child", title:"✨ 进阶 · 模板工坊",
+   text:"点模板库右上角的「＋ 新建」可以打开模板工坊编辑器，从零制作自己的模板，或在已有模板基础上修改。支持文字、图片、形状、贴纸等元素，做好的模板会出现在「我的模板」里随时调用。"}
 ];
 App.startWizard = function(i){
   App._wizStep = i||0;
@@ -2519,7 +2523,13 @@ App.runImport = async function(){
   if(valid.length){
     try{
       if(zone==="custom") App.saveCustomTemplates(App.state.customTemplates.concat(valid));
-      else App.savePresetTemplates((App.state.presetTemplates||[]).concat(valid));
+      else {
+        // 导入预设区：未经开发者「上架」的预设模板默认下架（草稿态），仅管理员可见
+        App.state.tplMeta.shelf=App.state.tplMeta.shelf||{};
+        valid.forEach(t=>{ App.state.tplMeta.shelf[t.id]=false; });
+        App.savePresetTemplates((App.state.presetTemplates||[]).concat(valid));
+        App.saveTplMeta();
+      }
       App.loadTemplates();
       App.setTplZone(zone);                     // 切到目标分区，缩略图立即渲染
       App.saveSession();
@@ -2529,7 +2539,7 @@ App.runImport = async function(){
   }
   const names=valid.map(v=>v.name);
   let html="";
-  if(valid.length) html+=`<div class="imp-ok">✅ 成功导入 ${valid.length} 套模板到${zone==="custom"?"自定义":"预设"}模板库：${App.esc(names.slice(0,5).join("、"))}${names.length>5?" 等":""}</div>`;
+  if(valid.length) html+=`<div class="imp-ok">✅ 成功导入 ${valid.length} 套模板到${zone==="custom"?"自定义":"预设（未上架草稿，需手动上架）"}模板库：${App.esc(names.slice(0,5).join("、"))}${names.length>5?" 等":""}</div>`;
   if(fails.length) html+=`<div class="imp-skip">⚠️ 跳过 ${fails.length} 条无效条目：<ul>${fails.slice(0,20).map(f=>`<li>${App.esc(f.tag)}：${App.esc(f.reason)}</li>`).join("")}${fails.length>20?`<li>…其余 ${fails.length-20} 条略</li>`:""}</ul></div>`;
   res.innerHTML = html;
   App.toast(valid.length ? `导入完成：成功 ${valid.length} 套${fails.length?`，跳过 ${fails.length} 条`:""}` : "没有有效模板可导入");
