@@ -229,6 +229,12 @@ body.is-admin #btnTplSel{display:inline-block}
 .hp-meta{flex:1;min-width:0}
 .empty-hint{text-align:center;color:var(--ink3);padding:70px 20px;line-height:2}
 .ed-top{height:50px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 12px;gap:8px}
+/* 画布上方对齐工具条：选中元素时出现（单选=对齐画布，多选=互相对齐+等距分布+贴画布） */
+#edAlignBar{display:none;align-items:center;gap:6px;padding:6px 12px;background:#fafbfe;border-bottom:1px solid var(--line);flex-wrap:wrap}
+#edAlignBar.on{display:flex}
+#edAlignBar .ab-lbl{font-size:12px;color:var(--muted);font-weight:600;white-space:nowrap}
+#edAlignBar .ab-sep{width:1px;height:20px;background:var(--line);margin:0 4px}
+#edAlignBar button{padding:5px 10px;font-size:12px;border-radius:8px}
 .ed-main{flex:1;display:flex;min-height:0}
 .ed-stage-wrap{flex:1;overflow:auto;position:relative;background:#e9ebf0}
 #edStage{position:relative;margin:36px auto;transform-origin:top center;background:#fff;box-shadow:var(--shadow);container-type:inline-size;aspect-ratio:3/4;width:380px}
@@ -826,6 +832,7 @@ body.is-admin #btnTplSel{display:inline-block}
     <button id="edDeleteTpl" style="display:none;color:var(--pink);border-color:var(--pink)" onclick="App.deleteEditingTemplate()">🗑 删除模板</button>
     <button class="ghost" onclick="App.closeEditor()">✕ 关闭</button>
   </div>
+  <div id="edAlignBar"></div>
   <div class="ed-main">
     <div id="edLeft">
       <div id="edLeftTabs">
@@ -915,7 +922,7 @@ const CURRENT_PASSWORD_HASH = "bba1b366a8205a4ccbe8277d46e21497cf1a93d3cd40c996c
 const AUTH_SESSION_KEY = "xhs_auth_session";
 const AUTH_PERM_KEY    = "xhs_auth_perm_v1";
 const GUIDE_KEY = "xhs_guide_seen_v1";
-const TOOL_VERSION = "1.0.13";
+const TOOL_VERSION = "1.0.14";
 const REMOTE_VERSION_URL = "./version.json";
 const VERSION_SEEN_KEY = "xhs_last_version";
 const VERSION_SEEN_KEY_OLD = "xhs_seen_version_v1";
@@ -4922,7 +4929,54 @@ App.bindEditorOnce = function(){
 };
 
 // ---- 属性面板 ----
+// 画布上方对齐工具条：选中即出现（单选=对齐画布；多选=互相对齐+等距分布+等大+贴画布），点空白取消选中后隐藏
+App.renderAlignBar=function(){
+  const bar=App.$("#edAlignBar"); if(!bar||!App.ed.tpl) return;
+  const n=App.ed.sel.size;
+  if(!n){ bar.classList.remove("on"); bar.innerHTML=""; return; }
+  bar.classList.add("on");
+  if(n===1){
+    bar.innerHTML=`<span class="ab-lbl">对齐画布</span>
+      <button title="贴左" onclick="App.alignToStage('l')">⇤ 左</button>
+      <button title="水平居中" onclick="App.alignToStage('ch')">↔ 横中</button>
+      <button title="贴右" onclick="App.alignToStage('r')">右 ⇥</button>
+      <span class="ab-sep"></span>
+      <button title="贴顶" onclick="App.alignToStage('t')">⇧ 顶</button>
+      <button title="垂直居中" onclick="App.alignToStage('cv')">↕ 竖中</button>
+      <button title="贴底" onclick="App.alignToStage('b')">底 ⇩</button>`;
+  }else{
+    bar.innerHTML=`<span class="ab-lbl">互相对齐</span>
+      <button title="左对齐" onclick="App.alignGroup('l')">⇤ 左</button>
+      <button title="水平居中" onclick="App.alignGroup('ch')">↔ 横中</button>
+      <button title="右对齐" onclick="App.alignGroup('r')">右 ⇥</button>
+      <button title="顶对齐" onclick="App.alignGroup('t')">⇧ 顶</button>
+      <button title="垂直居中" onclick="App.alignGroup('cv')">↕ 竖中</button>
+      <button title="底对齐" onclick="App.alignGroup('b')">底 ⇩</button>
+      <span class="ab-sep"></span>
+      <span class="ab-lbl">分布/等大</span>
+      <button title="横向等距" onclick="App.distributeGroup('h')">⇹ 横等距</button>
+      <button title="纵向等距" onclick="App.distributeGroup('v')">⇳ 纵等距</button>
+      <button title="等宽" onclick="App.equalSizeGroup('w')">等宽</button>
+      <button title="等高" onclick="App.equalSizeGroup('h')">等高</button>
+      <span class="ab-sep"></span>
+      <span class="ab-lbl">贴画布</span>
+      <button title="贴左画布" onclick="App.alignToStage('l')">⇤ 左</button>
+      <button title="画布横居中" onclick="App.alignToStage('ch')">↔ 横中</button>
+      <button title="贴右画布" onclick="App.alignToStage('r')">右 ⇥</button>
+      <button title="贴顶画布" onclick="App.alignToStage('t')">⇧ 顶</button>
+      <button title="画布竖居中" onclick="App.alignToStage('cv')">↕ 竖中</button>
+      <button title="贴底画布" onclick="App.alignToStage('b')">底 ⇩</button>`;
+  }
+};
 App.renderEditorProps = function(){
+  // 保持属性面板滚动位置：选中/改属性重建面板后不再跳回顶部（实际滚动容器是 #edPanel）
+  const panel=App.$("#edPanel");
+  const _scroll=panel?panel.scrollTop:0;
+  App._renderEditorPropsInner();
+  App.renderAlignBar();
+  if(panel) panel.scrollTop=_scroll;
+};
+App._renderEditorPropsInner = function(){
   // 颜色字段：取色器始终可调；同行「无填充」开关置空（值=""=透明）；支持屏幕吸色（可取网页外颜色）
   const colorFld=(ph,key,label,defaultColor)=>{
     const none = !ph[key];
