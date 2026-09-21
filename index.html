@@ -277,6 +277,10 @@ body.is-admin #btnTplSel{display:inline-block}
 .h-nw{left:-5px;top:-5px;cursor:nwse-resize}.h-n{left:50%;top:-5px;cursor:ns-resize}.h-ne{right:-5px;top:-5px;cursor:nesw-resize}
 .h-w{left:-5px;top:50%;cursor:ew-resize}.h-e{right:-5px;top:50%;cursor:ew-resize}
 .h-sw{left:-5px;bottom:-5px;cursor:nesw-resize}.h-s{left:50%;bottom:-5px;cursor:ns-resize}.h-se{right:-5px;bottom:-5px;cursor:nwse-resize}
+/* 多选组包围盒：整体旋转手柄（顶部中央） */
+.ed-gbbox .h-rot{left:50%;top:-34px;transform:translateX(-50%);cursor:grab;background:#fff;border-color:var(--brand)}
+.ed-gbbox .h-rot:active{cursor:grabbing}
+.ed-gbbox .h-rot::after{content:"⟳";position:absolute;left:50%;top:50%;transform:translate(-50%,-54%);font-size:9px;line-height:1;color:var(--brand);font-style:normal;pointer-events:none}
 #edPanel{width:290px;background:#fff;border-left:1px solid var(--line);overflow-y:auto;flex:0 0 290px;position:relative}
 #panelResizer{position:absolute;left:-3px;top:0;width:6px;height:100%;cursor:ew-resize;z-index:10}
 .ed-sec{padding:12px;border-bottom:1px solid var(--line)}
@@ -640,7 +644,10 @@ body.is-admin #btnTplSel{display:inline-block}
       <div class="card-head">
         <span class="num-badge">1</span><span class="card-title" style="font-size:15px">上传图片</span>
         <span class="spacer"></span>
-        <button onclick="App.clearAllImages()">🗑 一键清空</button>
+        <button onclick="App.clearPoolImages('main')" title="仅清空主图素材">清主图</button>
+        <button onclick="App.clearPoolImages('tail')" title="仅清空尾图素材">清尾图</button>
+        <button onclick="App.clearPoolImages('normal')" title="仅清空普通素材">清普通</button>
+        <button onclick="App.clearAllImages()" title="清空全部素材">🗑 全部清空</button>
       </div>
       <div class="card-body" style="padding-bottom:10px">
         <div style="display:flex;gap:10px;margin-bottom:8px">
@@ -922,7 +929,7 @@ const CURRENT_PASSWORD_HASH = "bba1b366a8205a4ccbe8277d46e21497cf1a93d3cd40c996c
 const AUTH_SESSION_KEY = "xhs_auth_session";
 const AUTH_PERM_KEY    = "xhs_auth_perm_v1";
 const GUIDE_KEY = "xhs_guide_seen_v1";
-const TOOL_VERSION = "1.0.14";
+const TOOL_VERSION = "1.0.15";
 const REMOTE_VERSION_URL = "./version.json";
 const VERSION_SEEN_KEY = "xhs_last_version";
 const VERSION_SEEN_KEY_OLD = "xhs_seen_version_v1";
@@ -1861,7 +1868,13 @@ App.handleFiles = async function(fileList){
 App._ingestImageFiles = async function(files){
   // 分批并发读取（每批 4 张），处理完立即刷新缩略图；同批内也去重；大图自动降采样
   let added=0, dup=0, compressed=0, failed=0;
-  const known = ()=>new Set(App.state.images.map(im=>im.hash));
+  // 同一素材允许进入不同素材池；同一素材在同一池内仍按 hash 去重
+  const targetPool=App.state.uploadPool;
+  const known = ()=>new Set(App.state.images.filter(im=>{
+    if(targetPool==="main") return im.main;
+    if(targetPool==="tail") return im.tail;
+    return !im.main&&!im.tail;
+  }).map(im=>im.hash));
   const readOne = async f=>{
     const hash = await App.hashFile(f);
     return {f, hash};
@@ -1882,21 +1895,28 @@ App._ingestImageFiles = async function(files){
     seen.add(hash); todo.push({f,hash});
   });
   if(!todo.length){ App.renderImages(); if(dup) App.toast(`已跳过重复图片 ${dup} 张`); return; }
+  // 上传开始时固化本次归属（中途切换素材池不影响本批），保证顺序与选择顺序一致：
+  // 分批并行解码 → 同批内按 todo 原始顺序依次 push
+  const asMain = !!(App.state.presetMain && targetPool==="main");
+  const asTail = !!(App.state.presetTail && targetPool==="tail");
   let lastPaint=0;
   const paint=(force)=>{ const now=performance.now(); if(force||now-lastPaint>120){ lastPaint=now; App.renderImages(); } };
   for(let i=0;i<todo.length;i+=4){
-    const settled=await Promise.allSettled(todo.slice(i,i+4).map(async ({f,hash})=>{
+    const batch=todo.slice(i,i+4);
+    const settled=await Promise.allSettled(batch.map(async ({f,hash})=>{
       const r = await App.loadImageFile(f);
       const img = await new Promise(res=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=()=>res(null); i.src=r.dataUrl; });
       if(!img) throw new Error("decode fail");
-      App.state.images.push({uid:App.uid(), name:f.name, hash, dataUrl:r.dataUrl, img,
-        main: !!(App.state.presetMain && App.state.uploadPool==="main"),
-        tail: !!(App.state.presetTail && App.state.uploadPool==="tail")});
+      return {f,hash,r,img};
+    }));
+    settled.forEach((x,bi)=>{
+      if(x.status==="rejected"){ failed++; App.reportError("upload-one",x.reason); return; }
+      const {f,hash,r,img}=x.value;
+      App.state.images.push({uid:App.uid(), name:f.name, hash, dataUrl:r.dataUrl, img, main:asMain, tail:asTail});
       if(r.compressed) compressed++;
       added++;
       paint(false);
-    }));
-    settled.forEach(x=>{ if(x.status==="rejected"){ failed++; App.reportError("upload-one",x.reason); } });
+    });
     paint(false);
   }
   App.renderImages();
@@ -2206,7 +2226,7 @@ App.setUploadPool = function(pool){
   if(hint) hint.textContent =
     App.state.uploadPool==="main" ? "当前上传到：主图素材。主图素材只会填入模板的「主图位」。"
     : App.state.uploadPool==="tail" ? "当前上传到：尾图素材。尾图素材只会填入模板的「尾图位」。"
-    : "当前上传到：普通素材。已在主图 / 尾图素材中的图片不会重复加入。";
+    : "当前上传到：普通素材。同一图片也可以分别加入主图、尾图和普通素材池（同一池内不重复）。";
 };
 
 App.removeImage = function(uid){
@@ -2214,6 +2234,24 @@ App.removeImage = function(uid){
   App.state.sets.forEach(s=>s.pages.forEach(p=>{ p.slots = p.slots.map(u=>u===uid?null:u); if(s.generated)s.dirty=true; }));
   App.renderImages(); App.renderSets(); App.saveSets();
   App.idbImagesDelete([uid]).catch(e=>App.reportError("idb-del",e));
+};
+App.clearPoolImages = function(pool){
+  const label=pool==="main"?"主图素材":pool==="tail"?"尾图素材":"普通素材";
+  const inPool=App._poolImgs(pool);
+  if(!inPool.length) return App.toast(`${label}暂无素材`);
+  if(!confirm(`确定清空${label}？仅移除该素材池中的图片。`)) return;
+  const remove=[];
+  App.state.images.forEach(im=>{
+    const hit=inPool.some(x=>x.uid===im.uid); if(!hit) return;
+    if(pool==="main"&&im.tail){ im.main=false; return; }
+    if(pool==="tail"&&im.main){ im.tail=false; return; }
+    if(pool==="normal"&&(im.main||im.tail)) return;
+    remove.push(im.uid);
+  });
+  App.state.images=App.state.images.filter(im=>!remove.includes(im.uid));
+  App.state.sets.forEach(s=>s.pages.forEach(p=>{ p.slots=p.slots.map(u=>remove.includes(u)?null:u); if(s.generated&&remove.length)s.dirty=true; }));
+  App.renderImages(); App.renderSets(); App.saveSession();
+  App.idbImagesDelete(remove).catch(e=>App.reportError("idb-pool-clear",e));
 };
 App.clearAllImages = function(){
   if(!App.state.images.length) return;
@@ -4589,6 +4627,7 @@ App.renderGroupBBox = function(st,perspPh){
   const r=Math.max(...grp.map(p=>p.x+p.w)), btm=Math.max(...grp.map(p=>p.y+p.h));
   st.insertAdjacentHTML("beforeend",
     `<div class="ed-gbbox" style="left:${l}%;top:${t}%;width:${r-l}%;height:${btm-t}%">`+
+    `<i class="ed-handle h-rot" data-g="rot" title="整体旋转（按住 Shift 吸附 15°）"></i>`+
     ["nw","ne","sw","se"].map(d=>`<i class="ed-handle h-${d}" data-g="${d}"></i>`).join("")+`</div>`);
 };
 App.renderStage = function(){
@@ -4705,8 +4744,8 @@ App.rectCorners = ph => [{x:ph.x,y:ph.y},{x:ph.x+ph.w,y:ph.y},{x:ph.x+ph.w,y:ph.
 App.syncBBox = function(ph){
   if(!ph||!ph.corners||ph.corners.length!==4) return;
   const xs=ph.corners.map(c=>c.x), ys=ph.corners.map(c=>c.y);
-  ph.x=Math.max(0,Math.min(...xs));
-  ph.y=Math.max(0,Math.min(...ys));
+  ph.x=Math.min(...xs);   // 允许四角越出画布（负坐标 / >100）
+  ph.y=Math.min(...ys);
   ph.w=Math.max(1,Math.max(...xs)-ph.x);
   ph.h=Math.max(1,Math.max(...ys)-ph.y);
 };
@@ -4737,14 +4776,22 @@ App.bindEditorOnce = function(){
     if(gh && App.ed.sel.size>1){
       const grp=[...App.ed.sel].map(u=>App.ed.tpl.phs.find(p=>p.uid===u))
         .filter(p=>p&&!p.locked&&!p.hidden)
-        .map(p=>({p,ox:p.x,oy:p.y,ow:p.w,oh:p.h,ocs:p.corners?p.corners.map(c=>({x:c.x,y:c.y})):null}));
+        .map(p=>({p,ox:p.x,oy:p.y,ow:p.w,oh:p.h,orz:num(p.rz,0),ocs:p.corners?p.corners.map(c=>({x:c.x,y:c.y})):null}));
       const xs=grp.map(g=>g.p.x), ys=grp.map(g=>g.p.y);
       const bx0=Math.min(...xs), by0=Math.min(...ys);
       const box={x:bx0,y:by0,
         w:Math.max(...grp.map(g=>g.p.x+g.p.w))-bx0,
         h:Math.max(...grp.map(g=>g.p.y+g.p.h))-by0};
       e.preventDefault();
-      App.ed.drag={mode:"gscale",dir:gh.dataset.g,box,grp,sx:e.clientX,sy:e.clientY};
+      if(gh.dataset.g==="rot"){
+        // 整体旋转：绕包围盒中心，记录按下时的初始角（屏幕像素空间，与 CSS rz / 导出一致）
+        const cx=box.x+box.w/2, cy=box.y+box.h/2;
+        const rr=st.getBoundingClientRect();
+        const a=Math.atan2(e.clientY-rr.top-cy/100*rr.height, e.clientX-rr.left-cx/100*rr.width);
+        App.ed.drag={mode:"grotate",box,grp,cx,cy,startAngle:a,sx:e.clientX,sy:e.clientY};
+      }else{
+        App.ed.drag={mode:"gscale",dir:gh.dataset.g,box,grp,sx:e.clientX,sy:e.clientY};
+      }
       return;
     }
     // ② 空白处：拖拽框选（多选）；纯点击清空选择
@@ -4805,7 +4852,7 @@ App.bindEditorOnce = function(){
     const d=App.ed.drag; if(!d || !App.$("#editor").classList.contains("show")) return;
     const r=App.$("#edStage").getBoundingClientRect();
     const dx=(e.clientX-d.sx)/r.width*100, dy=(e.clientY-d.sy)/r.height*100;
-    const MIN=2, clamp=v=>Math.max(0,Math.min(100,v));
+    const MIN=2, clamp=v=>Math.max(-100,Math.min(200,v));  // 允许元素延伸到画布外（-100%~200%）
     if(d.mode==="corner"){
       if(!d.ph.corners) d.ph.corners=App.rectCorners(d.ph);
       d.ph.corners[d.ci]={x:clamp(d.ox+dx), y:clamp(d.oy+dy)};
@@ -4855,13 +4902,36 @@ App.bindEditorOnce = function(){
         const ax=d.dir.includes("w")?d.box.x+d.box.w:d.box.x;
         const ay=d.dir.includes("n")?d.box.y+d.box.h:d.box.y;
         d.grp.forEach(g=>{
-          g.p.w=Math.max(1,Math.min(100,g.ow*kx));
-          g.p.h=Math.max(1,Math.min(100,g.oh*ky));
+          g.p.w=Math.max(1,Math.min(300,g.ow*kx));
+          g.p.h=Math.max(1,Math.min(300,g.oh*ky));
           g.p.x=clamp(ax+(g.ox-ax)*kx);
           g.p.y=clamp(ay+(g.oy-ay)*ky);
           if(g.ocs) g.p.corners=g.ocs.map(c=>({x:clamp(ax+(c.x-ax)*kx),y:clamp(ay+(c.y-ay)*ky)}));
         });
       }
+    }else if(d.mode==="grotate"){
+      // 多选整体旋转：屏幕像素空间刚体旋转（非正方形画布视觉=导出一致）。
+      // 绕包围盒中心旋转各元素中心位置；四角(透视)元素几何由 corners 决定 → 旋转四角，不加 rz（避免二次旋转）
+      const KW=r.width/100, KH=r.height/100;
+      const gcx_s=d.cx*KW, gcy_s=d.cy*KH;
+      const a=Math.atan2(e.clientY-r.top-gcy_s, e.clientX-r.left-gcx_s);
+      let da=(a-d.startAngle)*180/Math.PI;
+      if(e.shiftKey) da=Math.round(da/15)*15;  // 吸附 15°
+      const rad=da*Math.PI/180, cos=Math.cos(rad), sin=Math.sin(rad);
+      d.grp.forEach(g=>{
+        const ox_s=(g.ox+g.ow/2-d.cx)*KW, oy_s=(g.oy+g.oh/2-d.cy)*KH;
+        g.p.x=d.cx+(ox_s*cos-oy_s*sin)/KW-g.ow/2;
+        g.p.y=d.cy+(ox_s*sin+oy_s*cos)/KH-g.oh/2;
+        if(g.ocs){
+          g.p.corners=g.ocs.map(c=>{
+            const px_s=(c.x-d.cx)*KW, py_s=(c.y-d.cy)*KH;
+            return {x:d.cx+(px_s*cos-py_s*sin)/KW, y:d.cy+(px_s*sin+py_s*cos)/KH};
+          });
+          App.syncBBox(g.p);
+        }else{
+          g.p.rz=num(g.orz,0)+da;
+        }
+      });
     }else{
       let {x,y,w,h}=d.box;
       const locked=!!d.ph.lockRatio;
@@ -4883,8 +4953,8 @@ App.bindEditorOnce = function(){
         }
       }
       if(w>=MIN&&h>=MIN){
-        d.ph.x=Math.max(0,Math.min(100-MIN,x)); d.ph.y=Math.max(0,Math.min(100-MIN,y));
-        d.ph.w=Math.max(MIN,Math.min(100-d.ph.x,w)); d.ph.h=Math.max(MIN,Math.min(100-d.ph.y,h));
+        d.ph.x=Math.max(-100,Math.min(200-MIN,x)); d.ph.y=Math.max(-100,Math.min(200-MIN,y));
+        d.ph.w=Math.max(MIN,Math.min(300,w)); d.ph.h=Math.max(MIN,Math.min(300,h));
         if(d.dir.includes("w")||d.dir.includes("e")) d.ph.autoW=false;  // 拖宽文字框 → 定宽换行模式
       }
     }
@@ -5263,7 +5333,7 @@ App.edSet = function(uid,key,val){
   if(ph.type==="img"&&ph.corners&&(key==="x"||key==="y")){
     // 已设透视：改 X/Y = 平移整个四边形；宽高由四角决定，忽略
     const d=val-ph[key];
-    ph.corners.forEach(c=>{ c[key]=Math.max(0,Math.min(100,c[key]+d)); });
+    ph.corners.forEach(c=>{ c[key]=Math.max(-100,Math.min(200,c[key]+d)); });
     ph[key]=val;
   }else if(ph.type==="img"&&ph.corners&&(key==="w"||key==="h")){
     return; // 已设透视：宽高由四角决定
@@ -5331,7 +5401,7 @@ App.edShadow=function(uid,key,val){
 };
 App.edCorner=function(uid,i,k,val){
   const ph=App.ed.tpl.phs.find(p=>p.uid===uid); if(!ph||!ph.corners||!ph.corners[i]) return;
-  ph.corners[i][k]=Math.max(0,Math.min(100,num(val,ph.corners[i][k])));
+  ph.corners[i][k]=Math.max(-100,Math.min(200,num(val,ph.corners[i][k])));
   App.syncBBox(ph);
   App.requestStageRender();
   clearTimeout(App._edT); App._edT=setTimeout(()=>App.edPush(),500);
@@ -5339,7 +5409,7 @@ App.edCorner=function(uid,i,k,val){
 // ◀▶ 按钮微调：步进后刷新属性面板里的数字
 App.edCornerNudge=function(uid,i,k,d){
   const ph=App.ed.tpl.phs.find(p=>p.uid===uid); if(!ph||!ph.corners||!ph.corners[i]) return;
-  ph.corners[i][k]=Math.max(0,Math.min(100,+(ph.corners[i][k]+d).toFixed(2)));
+  ph.corners[i][k]=Math.max(-100,Math.min(200,+(ph.corners[i][k]+d).toFixed(2)));
   App.syncBBox(ph);
   App.edPush(); App.renderEditor();
 };
@@ -6123,8 +6193,8 @@ document.addEventListener("keydown", function(e){
       if(e.key==="ArrowDown")ny+=step;
       if(e.key==="ArrowLeft")nx-=step;
       if(e.key==="ArrowRight")nx+=step;
-      nx=Math.max(0,Math.min(100-p.w,nx));
-      ny=Math.max(0,Math.min(100-p.h,ny));
+      nx=Math.max(-100,Math.min(200-p.w,nx));
+      ny=Math.max(-100,Math.min(200-p.h,ny));
       App.movePh(p,nx,ny);
     });
     App.renderEditor(); App.edPush();
