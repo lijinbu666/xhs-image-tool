@@ -505,7 +505,7 @@ body.is-admin #btnTplSel{display:inline-block}
         <li>点击左上上传区，在系统窗口里一次选多张图片批量上传；</li>
         <li>直接把图片文件<b>拖拽</b>进上传区，支持一次拖入多张，自动按文件去重；</li>
         <li>截图后在页面里按 <b>Ctrl+V</b>，直接粘贴上传，不用先存文件；</li>
-        <li>把 <b>PDF</b> 拖进来会自动转成图片，可勾选要哪几页（PPT 建议先导出/另存为 PDF）。</li></ul></div>
+        <li>把 <b>PDF / PPT / Word</b> 拖进来会自动转成图片，可勾选要哪几页（老格式 .ppt / .doc 请先另存为 .pptx / .docx 或 PDF）。</li></ul></div>
       <div class="guide-sec"><h3>第二步 · 按笔记配图顺序依次点模板</h3><ul>
         <li>在左下「模板库」里，按你发小红书笔记时配图的先后顺序，<b>依次点击模板卡片</b>；</li>
         <li>每点一张，它就带编号加入右侧「方案工作台」，素材会按顺序自动填入各页图位；</li>
@@ -585,27 +585,28 @@ body.is-admin #btnTplSel{display:inline-block}
   </div>
 </div>
 
-<!-- Office 文件引导（PPTX/DOCX 等浏览器无法直接解析） -->
+<!-- 老格式 Office 文件引导（.ppt/.doc/wps 等浏览器无法直接解析，新格式 pptx/docx 已可直接转图片） -->
 <div class="modal-mask" id="officeHintModal">
   <div class="modal" style="max-width:460px">
-    <div class="modal-head">📄 请先另存为 PDF<span class="spacer"></span><button class="ghost" onclick="App.closeOfficeHint()">✕</button></div>
+    <div class="modal-head">📄 请先转成 .pptx / .docx / PDF<span class="spacer"></span><button class="ghost" onclick="App.closeOfficeHint()">✕</button></div>
     <div class="modal-body">
-      <p style="margin:0 0 8px">检测到 Office 文档 <b id="officeHintName"></b>，浏览器无法直接解析这类格式。</p>
+      <p style="margin:0 0 8px">检测到老格式文档 <b id="officeHintName"></b>，浏览器无法直接解析这类老格式。</p>
+      <p style="margin:0 0 8px">新版格式 <b>.pptx / .docx</b> 可以直接拖进来转图片，只需转换一下：</p>
       <ol style="margin:0;padding-left:20px;line-height:1.9;font-size:13px">
         <li>用 PowerPoint / Word / WPS 打开这个文件；</li>
-        <li>菜单「文件 → 另存为 → PDF（或导出为 PDF）」；</li>
-        <li>把导出的 PDF 拖回本上传区，即可选择页面转成图片。</li>
+        <li>菜单「文件 → 另存为」→ 选 <b>PPTX / DOCX</b>（或 PDF）；</li>
+        <li>把转好的文件拖回本上传区，即可选择页面转成图片。</li>
       </ol>
-      <div class="upload-tip" style="margin-top:10px">图片（PNG / JPG / WebP）可直接上传，不受影响。</div>
+      <div class="upload-tip" style="margin-top:10px">图片（PNG / JPG / WebP）与 .pptx / .docx / PDF 可直接上传，不受影响。</div>
     </div>
     <div class="modal-foot"><button class="primary" onclick="App.closeOfficeHint()">知道了</button></div>
   </div>
 </div>
 
-<!-- PDF 选页转图片 -->
+<!-- 文档选页转图片（PDF / PPTX / DOCX 共用） -->
 <div class="modal-mask" id="pdfPagerModal">
   <div class="modal" style="width:760px;max-width:96vw">
-    <div class="modal-head">📕 PDF 转图片 · <span id="pdfPagerName"></span><span class="spacer"></span><button class="ghost" onclick="App.closePdfPager()">✕</button></div>
+    <div class="modal-head"><span id="pdfPagerTitle">📕 PDF 转图片</span> · <span id="pdfPagerName"></span><span class="spacer"></span><button class="ghost" onclick="App.closePdfPager()">✕</button></div>
     <div class="modal-body">
       <div class="pp-tools">
         <label class="small" style="display:inline-flex;align-items:center;gap:5px"><input type="checkbox" id="ppAll" checked onchange="App.ppToggleAll(this.checked)"> 全选</label>
@@ -667,10 +668,10 @@ body.is-admin #btnTplSel{display:inline-block}
         </div>
         <div class="dropzone" id="dropzone" onclick="document.getElementById('imgFileInput').click()">
           <div class="up">↑</div>
-          拖拽图片 / PDF 到此处，或点击批量上传
-          <div class="small" style="margin-top:5px;color:#9a9ed0">📷 支持图片；📕 PDF 自动转图片（可勾选页面）；📋 截图后直接 <b>Ctrl+V</b> 粘贴上传</div>
+          拖拽图片 / PDF / PPT / Word 到此处，或点击批量上传
+          <div class="small" style="margin-top:5px;color:#9a9ed0">📷 支持图片；📕 PDF / PPT / Word 自动转图片（可勾选页面）；📋 截图后直接 <b>Ctrl+V</b> 粘贴上传</div>
         </div>
-        <input type="file" id="imgFileInput" accept="image/*,.pdf,application/pdf" multiple class="hidden" onchange="App.handleFiles(this.files)">
+        <input type="file" id="imgFileInput" accept="image/*,.pdf,application/pdf,.pptx,.docx" multiple class="hidden" onchange="App.handleFiles(this.files)">
         <div class="img-strip" id="imgGrid"></div>
         <div class="small muted" id="imgCount" style="margin-top:6px">共 0 张</div>
       </div>
@@ -929,7 +930,7 @@ const CURRENT_PASSWORD_HASH = "bba1b366a8205a4ccbe8277d46e21497cf1a93d3cd40c996c
 const AUTH_SESSION_KEY = "xhs_auth_session";
 const AUTH_PERM_KEY    = "xhs_auth_perm_v1";
 const GUIDE_KEY = "xhs_guide_seen_v1";
-const TOOL_VERSION = "1.0.15";
+const TOOL_VERSION = "1.0.16";
 const REMOTE_VERSION_URL = "./version.json";
 const VERSION_SEEN_KEY = "xhs_last_version";
 const VERSION_SEEN_KEY_OLD = "xhs_seen_version_v1";
@@ -1570,7 +1571,7 @@ App.closeGuide = function(){
 // ================= B2. 新手引导（只带路：高亮现有区域，不改任何功能路径） =================
 App.WIZ_STEPS = [
   {sel:"#imgCard", title:"第 1 步 · 上传图片",
-   text:"上传方式任选、可混用：点击上传区批量选图；把图片拖进来；截图后直接 Ctrl+V 粘贴；拖入 PDF 还能勾选页面转成图片。自动去重，顺序就是后面的配图顺序。"},
+   text:"上传方式任选、可混用：点击上传区批量选图；把图片拖进来；截图后直接 Ctrl+V 粘贴；拖入 PDF / PPT / Word 还能勾选页面转成图片。自动去重，顺序就是后面的配图顺序。"},
   {sel:"#tplGrid", title:"第 2 步 · 选择模板",
    text:"在模板库里，按你发笔记时配图的先后顺序依次点击模板卡片，每点一张就带编号加入右侧方案。选择模板的顺序就是配图的顺序，排错了可以在工作台里用 ▲▼ 调整、✕ 移除。"},
   {sel:"#setsWrap", title:"第 3 步 · 生成并预览",
@@ -1847,23 +1848,30 @@ App.IMG_EXT = /\.(png|jpe?g|webp|gif|bmp|avif)$/i;
 App.OFFICE_EXT = /\.(pptx?|docx?|xlsx?|wps|et|dps|key|numbers|pages|odt|ods|odp|rtf)$/i;
 App._isImgFile = f => (f.type&&f.type.startsWith("image/")) || App.IMG_EXT.test(f.name||"");
 App._isPdfFile = f => f.type==="application/pdf" || /\.pdf$/i.test(f.name||"");
-// 统一文件入口（点击选择 / 拖拽 / 粘贴 / PDF 转图后都走这里）：图片直传，PDF 选页转图，Office 引导另存
+// 统一文件入口（点击选择 / 拖拽 / 粘贴 / PDF 转图后都走这里）：图片直传，PDF/PPTX/DOCX 选页转图，老格式 Office 引导转换
 App.handleFiles = async function(fileList){
   // 必须先快照展开：input.files 是 live FileList，下面清空 value 会把它一并清空
   const all=[...(fileList||[])];
   if(!all.length) return;
   if(this&&this.value) try{ this.value=""; }catch(e){}
   const input=App.$("#imgFileInput"); if(input&&input.value) input.value="";
+  const isDocConv=f=>/\.(pptx|docx)$/i.test(f.name||"");
   const imgs=all.filter(App._isImgFile);
   const pdfs=all.filter(f=>!App._isImgFile(f)&&App._isPdfFile(f));
-  const offices=all.filter(f=>!App._isImgFile(f)&&!App._isPdfFile(f)&&App.OFFICE_EXT.test(f.name||""));
+  const docs=all.filter(f=>!App._isImgFile(f)&&!App._isPdfFile(f)&&isDocConv(f));
+  const offices=all.filter(f=>!App._isImgFile(f)&&!App._isPdfFile(f)&&!isDocConv(f)&&App.OFFICE_EXT.test(f.name||""));
   if(imgs.length) App._ingestImageFiles(imgs);
   pdfs.forEach(f=>App.openPdfPager(f).catch(e=>{
     App.reportError("pdf-open",e);
     App.toast("PDF 读取失败，请确认文件未损坏且当前网络可用（PDF 解析组件需联网加载一次）");
   }));
+  // 文档逐个排队转换，避免并发渲染爆内存
+  docs.reduce((p,f)=>p.then(()=>App.openDocPager(f)).catch(e=>{
+    App.reportError("doc-open",e);
+    App.toast(`「${f.name}」转换失败：${e&&e.message||"未知错误"}`);
+  }), Promise.resolve());
   if(offices.length) App.showOfficeHint(offices[0].name);
-  if(!imgs.length&&!pdfs.length&&!offices.length) App.toast("仅支持图片、PDF；其他类型文件请先另存为 PDF");
+  if(!imgs.length&&!pdfs.length&&!docs.length&&!offices.length) App.toast("仅支持图片、PDF、PPTX、DOCX；其他类型请先转成这几种格式");
 };
 App._ingestImageFiles = async function(files){
   // 分批并发读取（每批 4 张），处理完立即刷新缩略图；同批内也去重；大图自动降采样
@@ -2003,6 +2011,7 @@ App.openPdfPager = async function(file){
 };
 App.closePdfPager = function(){
   App.$("#pdfPagerModal").classList.remove("show");
+  const host=App.$("#docRenderHost"); if(host) host.innerHTML="";
   App.pp={busy:false};
 };
 App.ppToggle = function(n,on){
@@ -2041,30 +2050,223 @@ App.ppConfirm = async function(){
   const nums=[...App.pp.sel].sort((a,b)=>a-b);
   if(!nums.length) return App.toast("请先勾选要导入的页面");
   const btn=App.$("#ppOkBtn"); btn.disabled=true; btn.textContent="正在转图片…";
-  const {pdf}=App.pp;
-  const base=(App.pp.file.name||"pdf").replace(/\.pdf$/i,"");
+  const kind=App.pp.kind||"pdf";
+  const base=(App.pp.file.name||"doc").replace(/\.(pdf|pptx|docx)$/i,"");
   const out=[];
   try{
-    for(const n of nums){
-      const page=await pdf.getPage(n);
-      // 高清导出：scale=2（约 144 DPI）；长边封顶 2000px 防内存爆炸
-      let vp=page.getViewport({scale:2});
-      const long=Math.max(vp.width,vp.height);
-      if(long>2000) vp=page.getViewport({scale:2*2000/long});
-      const cv=document.createElement("canvas");
-      cv.width=Math.round(vp.width); cv.height=Math.round(vp.height);
-      await page.render({canvasContext:cv.getContext("2d"), viewport:vp}).promise;
-      const blob=await new Promise(res=>cv.toBlob(res,"image/png"));
-      out.push(new File([blob], `${base}_p${n}.png`, {type:"image/png"}));
+    if(kind==="pdf"){
+      const {pdf}=App.pp;
+      for(const n of nums){
+        const page=await pdf.getPage(n);
+        // 高清导出：scale=2（约 144 DPI）；长边封顶 2000px 防内存爆炸
+        let vp=page.getViewport({scale:2});
+        const long=Math.max(vp.width,vp.height);
+        if(long>2000) vp=page.getViewport({scale:2*2000/long});
+        const cv=document.createElement("canvas");
+        cv.width=Math.round(vp.width); cv.height=Math.round(vp.height);
+        await page.render({canvasContext:cv.getContext("2d"), viewport:vp}).promise;
+        const blob=await new Promise(res=>cv.toBlob(res,"image/png"));
+        out.push(new File([blob], `${base}_p${n}.png`, {type:"image/png"}));
+      }
+    }else{
+      // PPTX / DOCX：对选中页的 DOM 逐页高清截图（缩略图阶段只截小图，这里才截大图，控内存）
+      for(const n of nums){
+        const page=App.pp.pages[n-1];
+        const cv = page.cv
+          ? page.cv
+          : await html2canvas(page.el, {scale:2, backgroundColor:"#ffffff", useCORS:true, logging:false});
+        const cv2=App._capCanvas(cv,2000);
+        const blob=await new Promise(res=>cv2.toBlob(res,"image/png"));
+        out.push(new File([blob], `${base}_p${n}.png`, {type:"image/png"}));
+      }
     }
     App.closePdfPager();
-    App.toast(`已把 PDF 的 ${out.length} 页转为图片`);
+    App.toast(`已把${kind==="pdf"?"PDF":"文档"}的 ${out.length} 页转为图片`);
     App._ingestImageFiles(out);
   }catch(e){
-    App.reportError("pdf-render",e);
+    App.reportError("doc-render",e);
     btn.disabled=false; btn.textContent="导入选中页";
     App.toast("部分页面转图失败，请重试");
   }
+};
+
+// ---- PPTX / DOCX 纯前端转图片：按需联网加载渲染组件 → HTML 渲染 → html2canvas 截图 → 选页入库 ----
+// 与 pdf.js 同模式：组件从 CDN 加载一次，之后离线可用；转换全程在本地浏览器完成，不上传文件
+App.DOC_LIBS = {
+  jszip:"https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js",
+  docx :"https://cdn.jsdelivr.net/npm/docx-preview@0.4.0/dist/docx-preview.min.js",
+  pptx :"https://cdn.jsdelivr.net/npm/pptx-preview@1.0.7/dist/pptx-preview.umd.min.js",
+  h2c  :"https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"
+};
+App._scriptCache = {};
+App.loadScriptOnce = function(url){
+  if(App._scriptCache[url]) return App._scriptCache[url];
+  App._scriptCache[url]=new Promise((resolve,reject)=>{
+    const s=document.createElement("script");
+    s.src=url; s.onload=resolve;
+    s.onerror=()=>reject(new Error("组件加载失败（需联网一次）"));
+    document.head.appendChild(s);
+    setTimeout(()=>reject(new Error("组件加载超时，请检查网络")),30000);
+  }).catch(e=>{ delete App._scriptCache[url]; throw e; });
+  return App._scriptCache[url];
+};
+// 藏在屏幕外的渲染容器（不能 display:none，否则截图为空白）
+App._docRenderHost = function(width){
+  let host=App.$("#docRenderHost");
+  if(!host){
+    host=document.createElement("div");
+    host.id="docRenderHost";
+    document.body.appendChild(host);
+  }
+  host.style.cssText=`position:fixed;left:-20000px;top:0;width:${width||1000}px;background:#fff;z-index:-1;`;
+  host.innerHTML="";
+  return host;
+};
+App._nextFrames = ()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+// 从渲染容器里收集页面元素（自动穿透单层包装；过滤翻页按钮等小控件）
+App._collectPageEls = function(host){
+  let els=[...host.children];
+  while(els.length===1 && els[0].children.length>1) els=[...els[0].children];
+  return els.filter(el=>el.offsetWidth>=80&&el.offsetHeight>=60);
+};
+App._capCanvas = function(cv,longMax){
+  const long=Math.max(cv.width,cv.height);
+  if(long<=longMax) return cv;
+  const k=longMax/long, out=document.createElement("canvas");
+  out.width=Math.round(cv.width*k); out.height=Math.round(cv.height*k);
+  out.getContext("2d").drawImage(cv,0,0,out.width,out.height);
+  return out;
+};
+App._snapEl = async function(el,scale){
+  if(document.fonts&&document.fonts.ready) try{ await document.fonts.ready; }catch(e){}
+  await App._nextFrames();
+  return html2canvas(el,{scale,backgroundColor:"#ffffff",useCORS:true,logging:false});
+};
+// 一张超长画布按 A4 比例切片，优先在整行空白处下刀，避免把文字拦腰截断
+App._splitTallCanvas = function(cv){
+  const W=cv.width, H=cv.height, pageH=Math.round(W*1.4142);
+  if(H<=pageH*1.3) return [{cv, ratio:W/H}];
+  const ctx=cv.getContext("2d");
+  const whiteRow=y=>{
+    if(y<0||y>=H) return false;
+    const d=ctx.getImageData(0,y,W,1).data;
+    for(let x=0;x<d.length;x+=32){ if(d[x]<245||d[x+1]<245||d[x+2]<245) return false; }
+    return true;
+  };
+  const out=[]; let y=0;
+  while(y<H-2){
+    let cut=Math.min(y+pageH,H);
+    if(cut<H){
+      const lo=Math.max(y+Math.round(pageH*0.7),y+1);
+      for(let yy=cut;yy>=lo;yy--){
+        if(whiteRow(yy)&&whiteRow(yy+2)&&whiteRow(yy-2)){ cut=yy; break; }
+      }
+    }
+    const c2=document.createElement("canvas");
+    c2.width=W; c2.height=cut-y;
+    c2.getContext("2d").drawImage(cv,0,y,W,cut-y,0,0,W,cut-y);
+    out.push({cv:c2, ratio:W/(cut-y)});
+    y=cut;
+  }
+  return out;
+};
+App.openDocPager = async function(file){
+  if(App.pp.busy) return;
+  App.pp.busy=true;
+  const isPpt=/\.pptx$/i.test(file.name||"");
+  App.$("#pdfPagerTitle").textContent = isPpt?"📙 PPT 转图片":"📘 Word 转图片";
+  App.$("#pdfPagerName").textContent = file.name;
+  App.$("#ppGrid").innerHTML = `<div class="pp-loading">正在加载文档渲染组件并逐页渲染（首次需联网，约几秒）…</div>`;
+  App.$("#ppTotal").textContent="0"; App.$("#ppSelN").textContent="0";
+  App.$("#ppOkBtn").disabled=true;
+  App.$("#pdfPagerModal").classList.add("show");
+  try{
+    const pages = isPpt ? await App._renderPptxPages(file) : await App._renderDocxPages(file);
+    if(!pages.length) throw new Error("未能解析出页面内容，请确认文件未损坏");
+    pages.forEach((p,i)=>{ p.n=i+1; });
+    App.pp={busy:false, kind:isPpt?"pptx":"docx", file, pages, sel:new Set(pages.map(p=>p.n))};
+    App.$("#ppTotal").textContent=pages.length;
+    App.$("#ppGrid").innerHTML="";
+    for(const p of pages){
+      App.$("#ppGrid").insertAdjacentHTML("beforeend",
+        `<label class="pp-item on" data-n="${p.n}">
+           <input type="checkbox" checked onchange="App.ppToggle(${p.n},this.checked)">
+           <img src="${p.thumb}">
+           <span class="pp-no">第 ${p.n} 页</span>
+         </label>`);
+      App.$("#ppSelN").textContent=App.pp.sel.size;
+    }
+    App.$("#ppOkBtn").disabled=false;
+    App.$("#ppAll").checked=true;
+  }catch(e){
+    App.reportError("doc-convert",e);
+    App.$("#ppGrid").innerHTML=`<div class="pp-loading">文档解析失败：${App.esc(e&&e.message||"未知错误")}<br>请确认文件未损坏；老格式（.ppt / .doc）请先另存为 .pptx / .docx 或 PDF。</div>`;
+  }finally{
+    App.pp.busy=false;
+  }
+};
+// PPTX：pptx-preview 渲染（mode:"list" 一次渲染全部页），逐页截图生成缩略图
+App._renderPptxPages = async function(file){
+  await App.loadScriptOnce(App.DOC_LIBS.pptx);
+  await App.loadScriptOnce(App.DOC_LIBS.h2c);
+  if(!window.pptxPreview||typeof window.pptxPreview.init!=="function")
+    throw new Error("PPTX 渲染组件初始化失败");
+  const host=App._docRenderHost(1000);
+  const viewer=window.pptxPreview.init(host,{width:960,mode:"list"});
+  const buf=await file.arrayBuffer();
+  await viewer.preview(buf);
+  let els=App._collectPageEls(host);
+  // 个别版本 list 模式只渲染当前页：用 renderSingleSlide 逐页补齐
+  const total=(typeof viewer.slideCount==="number")?viewer.slideCount:els.length;
+  for(let i=els.length;i<total;i++){
+    try{ viewer.renderSingleSlide(i); }catch(e){ break; }
+    await App._nextFrames();
+    const one=App._collectPageEls(host);
+    if(one.length) els=els.concat(one.filter(el=>!els.includes(el)));
+  }
+  if(!els.length) throw new Error("未能解析出幻灯片（可能不是标准 PPTX，老 .ppt 请先另存为 .pptx）");
+  const pages=[];
+  for(const el of els){
+    const small=await App._snapEl(el,0.45);
+    pages.push({el, thumb:small.toDataURL("image/jpeg",0.7), ratio:small.width/small.height});
+    small.width=small.height=0;   // 释放缩略图位图
+  }
+  return pages;
+};
+// DOCX：docx-preview 渲染，Word 的分页标记会输出成多个 section；无分页标记时整篇长图按 A4 比例智能切片
+App._renderDocxPages = async function(file){
+  await Promise.all([
+    App.loadScriptOnce(App.DOC_LIBS.jszip),
+    App.loadScriptOnce(App.DOC_LIBS.docx),
+    App.loadScriptOnce(App.DOC_LIBS.h2c)
+  ]);
+  if(!window.docx||typeof window.docx.renderAsync!=="function")
+    throw new Error("Word 渲染组件初始化失败");
+  const host=App._docRenderHost(794);   // A4 宽 @96dpi
+  const buf=await file.arrayBuffer();
+  await window.docx.renderAsync(buf, host, null, {
+    inWrapper:true, ignoreWidth:false, ignoreHeight:false,
+    breakPages:true, ignoreLastRenderedPageBreak:false, experimental:true
+  });
+  const secs=[...host.querySelectorAll("section.docx")].filter(el=>el.offsetWidth>=80&&el.offsetHeight>=60);
+  const pages=[];
+  if(secs.length>1 || (secs.length===1&&secs[0].offsetHeight<=secs[0].offsetWidth*1.6)){
+    for(const el of secs){
+      const small=await App._snapEl(el,0.45);
+      pages.push({el, thumb:small.toDataURL("image/jpeg",0.7), ratio:small.width/small.height});
+      small.width=small.height=0;
+    }
+  }else{
+    // 没有分页标记：整篇截一张长图再切片
+    const tall=await App._snapEl(host.firstElementChild||host,1.2);
+    for(const seg of App._splitTallCanvas(App._capCanvas(tall,2000))){
+      pages.push({cv:App._capCanvas(seg.cv,2000), thumb:seg.cv.toDataURL("image/jpeg",0.7), ratio:seg.ratio});
+      seg.cv.width=seg.cv.height=0;
+    }
+    tall.width=tall.height=0;
+  }
+  if(!pages.length) throw new Error("未能解析出文档内容（可能不是标准 DOCX，老 .doc 请先另存为 .docx）");
+  return pages;
 };
 
 // ---- 截图粘贴上传：剪贴板里的图片直接进素材库 ----
