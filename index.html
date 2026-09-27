@@ -934,7 +934,7 @@ const CURRENT_PASSWORD_HASH = "bba1b366a8205a4ccbe8277d46e21497cf1a93d3cd40c996c
 const AUTH_SESSION_KEY = "xhs_auth_session";
 const AUTH_PERM_KEY    = "xhs_auth_perm_v1";
 const GUIDE_KEY = "xhs_guide_seen_v1";
-const TOOL_VERSION = "1.0.17";
+const TOOL_VERSION = "1.0.18";
 const REMOTE_VERSION_URL = "./version.json";
 const VERSION_SEEN_KEY = "xhs_last_version";
 const VERSION_SEEN_KEY_OLD = "xhs_seen_version_v1";
@@ -2119,7 +2119,12 @@ App.loadScriptOnce = function(urls){
 App._docPrefetched=false;
 App.prefetchDocLibs=function(){
   if(App._docPrefetched) return; App._docPrefetched=true;
-  setTimeout(()=>{ Object.values(App.DOC_LIBS).forEach(u=>App.loadScriptOnce(u).catch(()=>{})); }, 2500);
+  setTimeout(()=>{
+    // JSZip 必须先于 docx-preview 执行：docx-preview 脚本执行时读取全局 JSZip，乱序会固化坏引用（转 Word 报 loadAsync 错）
+    App.loadScriptOnce(App.DOC_LIBS.jszip).catch(()=>{}).then(()=>{
+      [App.DOC_LIBS.docx, App.DOC_LIBS.pptx, App.DOC_LIBS.h2c].forEach(u=>App.loadScriptOnce(u).catch(()=>{}));
+    });
+  }, 2500);
 };
 // 藏在屏幕外的渲染容器（不能 display:none，否则截图为空白）
 App._docRenderHost = function(width){
@@ -2265,8 +2270,8 @@ App._renderPptxPages = async function(file,prog){
 };
 // DOCX：docx-preview 整篇渲染，Word 分页标记输出多个 section；无分页标记的长文整图按 A4 空白行智能切片
 App._renderDocxPages = async function(file,prog){
+  await App.loadScriptOnce(App.DOC_LIBS.jszip);   // 必须先于 docx-preview 就绪（组件执行时读取全局 JSZip）
   await Promise.all([
-    App.loadScriptOnce(App.DOC_LIBS.jszip),
     App.loadScriptOnce(App.DOC_LIBS.docx),
     App.loadScriptOnce(App.DOC_LIBS.h2c)
   ]);
@@ -2274,10 +2279,19 @@ App._renderDocxPages = async function(file,prog){
     throw new Error("Word 渲染组件初始化失败");
   const host=App._docRenderHost(794);   // A4 宽 @96dpi
   const buf=await file.arrayBuffer();
-  await window.docx.renderAsync(buf, host, null, {
-    inWrapper:true, ignoreWidth:false, ignoreHeight:false,
-    breakPages:true, ignoreLastRenderedPageBreak:false, experimental:true
-  });
+  const renderOpts={inWrapper:true, ignoreWidth:false, ignoreHeight:false,
+    breakPages:true, ignoreLastRenderedPageBreak:false, experimental:true};
+  try{
+    await window.docx.renderAsync(buf, host, null, renderOpts);
+  }catch(e){
+    if(!/loadAsync/.test(String(e&&e.message||e))) throw e;
+    // 自愈：docx-preview 曾先于 JSZip 执行（坏闭包）→ 按正确顺序重装组件后重试一次
+    delete App._scriptCache[App.DOC_LIBS.docx[0]];
+    await App.loadScriptOnce(App.DOC_LIBS.jszip);
+    await App.loadScriptOnce(App.DOC_LIBS.docx);
+    host.innerHTML="";
+    await window.docx.renderAsync(buf, host, null, renderOpts);
+  }
   const secs=[...host.querySelectorAll("section.docx")].filter(el=>el.offsetWidth>=80&&el.offsetHeight>=60);
   const pages=[];
   if(secs.length>1 || (secs.length===1&&secs[0].offsetHeight<=secs[0].offsetWidth*1.6)){
