@@ -934,7 +934,7 @@ const CURRENT_PASSWORD_HASH = "bba1b366a8205a4ccbe8277d46e21497cf1a93d3cd40c996c
 const AUTH_SESSION_KEY = "xhs_auth_session";
 const AUTH_PERM_KEY    = "xhs_auth_perm_v1";
 const GUIDE_KEY = "xhs_guide_seen_v1";
-const TOOL_VERSION = "1.0.18";
+const TOOL_VERSION = "1.0.19";
 const REMOTE_VERSION_URL = "./version.json";
 const VERSION_SEEN_KEY = "xhs_last_version";
 const VERSION_SEEN_KEY_OLD = "xhs_seen_version_v1";
@@ -1953,22 +1953,30 @@ App.showOfficeHint = function(name){
 App.closeOfficeHint = ()=>App.$("#officeHintModal").classList.remove("show");
 
 // ---- PDF 纯前端解析（pdf.js 按需联网加载）→ 选页 → 高清 PNG 入库 ----
-App.PDF_CDN = "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/";
+App.PDF_CDNS = [
+  "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/",
+  "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/",
+  "https://unpkg.com/pdfjs-dist@3.11.174/build/"
+];
 App._pdfjsPromise = null;
 App.loadPdfJs = function(){
   if(window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
   if(App._pdfjsPromise) return App._pdfjsPromise;
-  App._pdfjsPromise = new Promise((resolve,reject)=>{
-    const s=document.createElement("script");
-    s.src=App.PDF_CDN+"pdf.min.js";
-    s.onload=()=>{
-      window.pdfjsLib.GlobalWorkerOptions.workerSrc=App.PDF_CDN+"pdf.worker.min.js";
-      resolve(window.pdfjsLib);
-    };
-    s.onerror=()=>reject(new Error("pdfjs 加载失败"));
-    document.head.appendChild(s);
-    setTimeout(()=>reject(new Error("pdfjs 加载超时")), 20000);
-  }).catch(e=>{ App._pdfjsPromise=null; throw e; });
+  const tryOne=i=>i>=App.PDF_CDNS.length
+    ? Promise.reject(new Error("pdfjs 加载失败（需联网一次，请检查网络后重试）"))
+    : new Promise((resolve,reject)=>{
+        const cdn=App.PDF_CDNS[i];
+        const s=document.createElement("script");
+        s.src=cdn+"pdf.min.js";
+        s.onload=()=>{
+          window.pdfjsLib.GlobalWorkerOptions.workerSrc=cdn+"pdf.worker.min.js";
+          resolve(window.pdfjsLib);
+        };
+        s.onerror=()=>{ s.remove(); reject(); };
+        document.head.appendChild(s);
+        setTimeout(()=>reject(new Error("timeout")), 20000);
+      }).catch(()=>tryOne(i+1));
+  App._pdfjsPromise=tryOne(0).catch(e=>{ App._pdfjsPromise=null; throw e; });
   return App._pdfjsPromise;
 };
 App.pp = {busy:false};
@@ -2061,7 +2069,10 @@ App.ppConfirm = async function(){
   try{
     if(kind==="pdf"){
       const {pdf}=App.pp;
-      for(const n of nums){
+      for(let i=0;i<nums.length;i++){
+        const n=nums[i];
+        btn.textContent=`正在转图片 ${i+1} / ${nums.length}…`;
+        await new Promise(r=>setTimeout(r,0));   // 让进度先刷新出来
         const page=await pdf.getPage(n);
         // 高清导出：scale=2（约 144 DPI）；长边封顶 2000px 防内存爆炸
         let vp=page.getViewport({scale:2});
@@ -2071,6 +2082,7 @@ App.ppConfirm = async function(){
         cv.width=Math.round(vp.width); cv.height=Math.round(vp.height);
         await page.render({canvasContext:cv.getContext("2d"), viewport:vp}).promise;
         const blob=await new Promise(res=>cv.toBlob(res,"image/png"));
+        cv.width=cv.height=0;
         out.push(new File([blob], `${base}_p${n}.png`, {type:"image/png"}));
       }
     }else{
@@ -2124,6 +2136,7 @@ App.prefetchDocLibs=function(){
     App.loadScriptOnce(App.DOC_LIBS.jszip).catch(()=>{}).then(()=>{
       [App.DOC_LIBS.docx, App.DOC_LIBS.pptx, App.DOC_LIBS.h2c].forEach(u=>App.loadScriptOnce(u).catch(()=>{}));
     });
+    App.loadPdfJs().catch(()=>{});   // pdf.js 也空闲预载：首次转 PDF 基本零等待（worker 按需加载）
   }, 2500);
 };
 // 藏在屏幕外的渲染容器（不能 display:none，否则截图为空白）
