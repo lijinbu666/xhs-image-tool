@@ -156,8 +156,12 @@ body.is-admin #btnTplSel{display:inline-block}
 .set-box.manage-check{padding-left:0}
 .set-top{display:flex;align-items:center;gap:7px 10px;padding:11px 14px;background:#fafbfe;cursor:default;flex-wrap:wrap;min-width:0;border-bottom:1px solid var(--line)}
 .set-box.active .set-top{background:var(--brand-l)}
-.caret{color:var(--brand-d);cursor:pointer;user-select:none;white-space:nowrap;font-size:12px;flex:0 0 auto;padding:3px 8px;border-radius:7px;background:#eef0fe}
-.caret:hover{background:#e2e5fd}
+.caret{color:var(--brand-d);cursor:pointer;user-select:none;white-space:nowrap;font-size:12px;flex:0 0 auto;padding:4px 10px;border-radius:8px;background:#fff;border:1px solid #c9cdf4;box-shadow:0 1px 4px rgba(79,107,239,.14);font-weight:600}
+.caret:hover{background:#eef0fe;box-shadow:0 2px 8px rgba(79,107,239,.22)}
+/* 方案名称衬底模块：名称与「可重命名」提示合为一体，虚线边框提示可编辑 */
+.set-namebox{display:inline-flex;align-items:center;gap:2px;background:#fff;border:1px dashed #b9bff2;border-radius:9px;padding:2px 10px 2px 4px;flex:0 1 auto;min-width:0;cursor:text;transition:border-color .15s, box-shadow .15s;max-width:240px}
+.set-namebox:hover{border-color:var(--brand);box-shadow:0 2px 8px rgba(79,107,239,.16)}
+.set-namebox .pen{font-size:11px;color:#8b90c9;white-space:nowrap;flex-shrink:0}
 .set-title{font-weight:700;font-size:15px;border:1px solid transparent;background:transparent;padding:3px 6px;border-radius:7px;max-width:150px;min-width:64px;flex:0 1 auto}
 .set-top .pill{flex-shrink:0}
 .set-top .chk{flex-shrink:0}
@@ -930,7 +934,7 @@ const CURRENT_PASSWORD_HASH = "bba1b366a8205a4ccbe8277d46e21497cf1a93d3cd40c996c
 const AUTH_SESSION_KEY = "xhs_auth_session";
 const AUTH_PERM_KEY    = "xhs_auth_perm_v1";
 const GUIDE_KEY = "xhs_guide_seen_v1";
-const TOOL_VERSION = "1.0.16";
+const TOOL_VERSION = "1.0.17";
 const REMOTE_VERSION_URL = "./version.json";
 const VERSION_SEEN_KEY = "xhs_last_version";
 const VERSION_SEEN_KEY_OLD = "xhs_seen_version_v1";
@@ -1824,6 +1828,7 @@ App.bootAfterAuth = async function(){
   App.initOutputDir();
   App.checkUpdate();
   App.installUnloadGuard();
+  App.prefetchDocLibs();   // 空闲预载 PPT/Word 转图组件：用户拖文件时基本零等待
   // 开发者已在此设备验证过管理口令 → 自动进入管理模式
   if(App.isAdmin()) App.enterAdminMode();
   // 刷新 / 意外关闭后重开：存在未保存的工坊草稿 → 主动询问是否恢复
@@ -2069,15 +2074,10 @@ App.ppConfirm = async function(){
         out.push(new File([blob], `${base}_p${n}.png`, {type:"image/png"}));
       }
     }else{
-      // PPTX / DOCX：对选中页的 DOM 逐页高清截图（缩略图阶段只截小图，这里才截大图，控内存）
+      // PPTX / DOCX：转换阶段已逐页生成高清 PNG，这里按勾选直接入库（秒级）
       for(const n of nums){
         const page=App.pp.pages[n-1];
-        const cv = page.cv
-          ? page.cv
-          : await html2canvas(page.el, {scale:2, backgroundColor:"#ffffff", useCORS:true, logging:false});
-        const cv2=App._capCanvas(cv,2000);
-        const blob=await new Promise(res=>cv2.toBlob(res,"image/png"));
-        out.push(new File([blob], `${base}_p${n}.png`, {type:"image/png"}));
+        if(page&&page.file) out.push(page.file);
       }
     }
     App.closePdfPager();
@@ -2090,25 +2090,36 @@ App.ppConfirm = async function(){
   }
 };
 
-// ---- PPTX / DOCX 纯前端转图片：按需联网加载渲染组件 → HTML 渲染 → html2canvas 截图 → 选页入库 ----
-// 与 pdf.js 同模式：组件从 CDN 加载一次，之后离线可用；转换全程在本地浏览器完成，不上传文件
+// ---- PPTX / DOCX 纯前端转图片：按需加载渲染组件 → HTML 渲染 → 逐页截图 → 选页入库 ----
+// 与 pdf.js 同模式：组件从 CDN 加载一次（多 CDN 依次回退），之后离线可用；转换全程在本地完成，不上传文件
 App.DOC_LIBS = {
-  jszip:"https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js",
-  docx :"https://cdn.jsdelivr.net/npm/docx-preview@0.4.0/dist/docx-preview.min.js",
-  pptx :"https://cdn.jsdelivr.net/npm/pptx-preview@1.0.7/dist/pptx-preview.umd.min.js",
-  h2c  :"https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"
+  jszip:["https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js","https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js","https://unpkg.com/jszip@3.10.1/dist/jszip.min.js"],
+  docx:["https://cdn.jsdelivr.net/npm/docx-preview@0.4.0/dist/docx-preview.min.js","https://unpkg.com/docx-preview@0.4.0/dist/docx-preview.min.js"],
+  pptx:["https://cdn.jsdelivr.net/npm/pptx-preview@1.0.7/dist/pptx-preview.umd.min.js","https://unpkg.com/pptx-preview@1.0.7/dist/pptx-preview.umd.min.js"],
+  h2c:["https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js","https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js","https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"]
 };
 App._scriptCache = {};
-App.loadScriptOnce = function(url){
-  if(App._scriptCache[url]) return App._scriptCache[url];
-  App._scriptCache[url]=new Promise((resolve,reject)=>{
-    const s=document.createElement("script");
-    s.src=url; s.onload=resolve;
-    s.onerror=()=>reject(new Error("组件加载失败（需联网一次）"));
-    document.head.appendChild(s);
-    setTimeout(()=>reject(new Error("组件加载超时，请检查网络")),30000);
-  }).catch(e=>{ delete App._scriptCache[url]; throw e; });
-  return App._scriptCache[url];
+App.loadScriptOnce = function(urls){
+  const list=Array.isArray(urls)?urls:[urls];
+  const key=list[0];
+  if(App._scriptCache[key]) return App._scriptCache[key];
+  const tryOne=i=>i>=list.length
+    ? Promise.reject(new Error("组件加载失败（需联网一次，请检查网络后重试）"))
+    : new Promise((resolve,reject)=>{
+        const s=document.createElement("script");
+        s.src=list[i]; s.onload=resolve;
+        s.onerror=()=>{ s.remove(); reject(); };
+        document.head.appendChild(s);
+        setTimeout(()=>reject(new Error("timeout")),30000);
+      }).catch(()=>tryOne(i+1));
+  App._scriptCache[key]=tryOne(0).catch(e=>{ delete App._scriptCache[key]; throw e; });
+  return App._scriptCache[key];
+};
+// 启动后空闲时预加载转换组件：用户拖入文件时基本零等待
+App._docPrefetched=false;
+App.prefetchDocLibs=function(){
+  if(App._docPrefetched) return; App._docPrefetched=true;
+  setTimeout(()=>{ Object.values(App.DOC_LIBS).forEach(u=>App.loadScriptOnce(u).catch(()=>{})); }, 2500);
 };
 // 藏在屏幕外的渲染容器（不能 display:none，否则截图为空白）
 App._docRenderHost = function(width){
@@ -2140,7 +2151,20 @@ App._capCanvas = function(cv,longMax){
 App._snapEl = async function(el,scale){
   if(document.fonts&&document.fonts.ready) try{ await document.fonts.ready; }catch(e){}
   await App._nextFrames();
-  return html2canvas(el,{scale,backgroundColor:"#ffffff",useCORS:true,logging:false});
+  return html2canvas(el,{scale,backgroundColor:"#ffffff",useCORS:true,logging:false,imageTimeout:8000});
+};
+// 一次高清截图同时产出：入库用 PNG blob + 选页用缩略图（避免截两遍）
+App._snapHi = async function(el){
+  const cv=await App._snapEl(el,2);
+  const cv2=App._capCanvas(cv,2000);
+  const blob=await new Promise(res=>cv2.toBlob(res,"image/png"));
+  const th=document.createElement("canvas");
+  const k=Math.min(1,340/cv2.width,460/cv2.height);
+  th.width=Math.max(1,Math.round(cv2.width*k)); th.height=Math.max(1,Math.round(cv2.height*k));
+  th.getContext("2d").drawImage(cv2,0,0,th.width,th.height);
+  const out={blob, thumb:th.toDataURL("image/jpeg",0.72), ratio:cv2.width/cv2.height};
+  cv.width=cv.height=th.width=th.height=0;   // 释放位图
+  return out;
 };
 // 一张超长画布按 A4 比例切片，优先在整行空白处下刀，避免把文字拦腰截断
 App._splitTallCanvas = function(cv){
@@ -2174,16 +2198,18 @@ App.openDocPager = async function(file){
   if(App.pp.busy) return;
   App.pp.busy=true;
   const isPpt=/\.pptx$/i.test(file.name||"");
+  const base=(file.name||"doc").replace(/\.(pptx|docx)$/i,"");
   App.$("#pdfPagerTitle").textContent = isPpt?"📙 PPT 转图片":"📘 Word 转图片";
   App.$("#pdfPagerName").textContent = file.name;
-  App.$("#ppGrid").innerHTML = `<div class="pp-loading">正在加载文档渲染组件并逐页渲染（首次需联网，约几秒）…</div>`;
+  App.$("#ppGrid").innerHTML = `<div class="pp-loading" id="ppProg">正在加载文档渲染组件（首次需联网，已尽量提前预载）…</div>`;
   App.$("#ppTotal").textContent="0"; App.$("#ppSelN").textContent="0";
   App.$("#ppOkBtn").disabled=true;
   App.$("#pdfPagerModal").classList.add("show");
   try{
-    const pages = isPpt ? await App._renderPptxPages(file) : await App._renderDocxPages(file);
-    if(!pages.length) throw new Error("未能解析出页面内容，请确认文件未损坏");
-    pages.forEach((p,i)=>{ p.n=i+1; });
+    const prog=(n,t)=>{ const el=App.$("#ppProg"); if(el) el.innerHTML=`正在转换 <b>${n}</b> / ${t} 页（每页约零点几秒，请稍候）…`; };
+    const raw = isPpt ? await App._renderPptxPages(file,prog) : await App._renderDocxPages(file,prog);
+    if(!raw.length) throw new Error("未能解析出页面内容，请确认文件未损坏");
+    const pages=raw.map((p,i)=>({n:i+1, file:new File([p.blob],`${base}_p${i+1}.png`,{type:"image/png"}), thumb:p.thumb, ratio:p.ratio}));
     App.pp={busy:false, kind:isPpt?"pptx":"docx", file, pages, sel:new Set(pages.map(p=>p.n))};
     App.$("#ppTotal").textContent=pages.length;
     App.$("#ppGrid").innerHTML="";
@@ -2205,36 +2231,40 @@ App.openDocPager = async function(file){
     App.pp.busy=false;
   }
 };
-// PPTX：pptx-preview 渲染（mode:"list" 一次渲染全部页），逐页截图生成缩略图
-App._renderPptxPages = async function(file){
+// PPTX：单页模式逐页「渲染→截图→释放」，任何页数都稳；个别页失败自动跳过不卡死
+App._renderPptxPages = async function(file,prog){
   await App.loadScriptOnce(App.DOC_LIBS.pptx);
   await App.loadScriptOnce(App.DOC_LIBS.h2c);
   if(!window.pptxPreview||typeof window.pptxPreview.init!=="function")
     throw new Error("PPTX 渲染组件初始化失败");
   const host=App._docRenderHost(1000);
-  const viewer=window.pptxPreview.init(host,{width:960,mode:"list"});
+  const viewer=window.pptxPreview.init(host,{width:960,mode:"slide"});
   const buf=await file.arrayBuffer();
-  await viewer.preview(buf);
-  let els=App._collectPageEls(host);
-  // 个别版本 list 模式只渲染当前页：用 renderSingleSlide 逐页补齐
-  const total=(typeof viewer.slideCount==="number")?viewer.slideCount:els.length;
-  for(let i=els.length;i<total;i++){
-    try{ viewer.renderSingleSlide(i); }catch(e){ break; }
-    await App._nextFrames();
-    const one=App._collectPageEls(host);
-    if(one.length) els=els.concat(one.filter(el=>!els.includes(el)));
+  let total=0;
+  try{
+    const pptx=await viewer.load(buf);
+    total=(pptx&&pptx.slides&&pptx.slides.length)||(viewer.slideCount||0);
+  }catch(e){
+    await viewer.preview(buf);
+    total=viewer.slideCount||App._collectPageEls(host).length;
   }
-  if(!els.length) throw new Error("未能解析出幻灯片（可能不是标准 PPTX，老 .ppt 请先另存为 .pptx）");
+  if(!total) throw new Error("未能解析出幻灯片（可能不是标准 PPTX，老 .ppt 请先另存为 .pptx）");
   const pages=[];
-  for(const el of els){
-    const small=await App._snapEl(el,0.45);
-    pages.push({el, thumb:small.toDataURL("image/jpeg",0.7), ratio:small.width/small.height});
-    small.width=small.height=0;   // 释放缩略图位图
+  for(let i=0;i<total;i++){
+    prog&&prog(i+1,total);
+    try{ viewer.renderSingleSlide(i); }catch(e){}
+    await App._nextFrames();
+    const el=host.querySelector(".pptx-preview-slide-wrapper-"+i);   // slide 模式按类名直接取当前页（通用收集器取不到：wrapper 只含 1 个绝对定位子元素，高度塌缩）
+    if(!el) continue;                        // 该页渲染失败：跳过，不卡死
+    pages.push(await App._snapHi(el));
+    try{ viewer.removeCurrentSlide(); }catch(e){}
+    el.remove();
   }
+  if(!pages.length) throw new Error("幻灯片内容渲染失败，请稍后重试或先导出为 PDF");
   return pages;
 };
-// DOCX：docx-preview 渲染，Word 的分页标记会输出成多个 section；无分页标记时整篇长图按 A4 比例智能切片
-App._renderDocxPages = async function(file){
+// DOCX：docx-preview 整篇渲染，Word 分页标记输出多个 section；无分页标记的长文整图按 A4 空白行智能切片
+App._renderDocxPages = async function(file,prog){
   await Promise.all([
     App.loadScriptOnce(App.DOC_LIBS.jszip),
     App.loadScriptOnce(App.DOC_LIBS.docx),
@@ -2252,18 +2282,27 @@ App._renderDocxPages = async function(file){
   const pages=[];
   if(secs.length>1 || (secs.length===1&&secs[0].offsetHeight<=secs[0].offsetWidth*1.6)){
     for(const el of secs){
-      const small=await App._snapEl(el,0.45);
-      pages.push({el, thumb:small.toDataURL("image/jpeg",0.7), ratio:small.width/small.height});
-      small.width=small.height=0;
+      prog&&prog(pages.length+1,secs.length);
+      pages.push(await App._snapHi(el));
+      el.remove();
     }
   }else{
-    // 没有分页标记：整篇截一张长图再切片
+    prog&&prog(1,1);
     const tall=await App._snapEl(host.firstElementChild||host,1.2);
-    for(const seg of App._splitTallCanvas(App._capCanvas(tall,2000))){
-      pages.push({cv:App._capCanvas(seg.cv,2000), thumb:seg.cv.toDataURL("image/jpeg",0.7), ratio:seg.ratio});
-      seg.cv.width=seg.cv.height=0;
-    }
+    const segs=App._splitTallCanvas(App._capCanvas(tall,2000));
     tall.width=tall.height=0;
+    for(let i=0;i<segs.length;i++){
+      prog&&prog(i+1,segs.length);
+      const cv2=App._capCanvas(segs[i].cv,2000);
+      const blob=await new Promise(res=>cv2.toBlob(res,"image/png"));
+      const th=document.createElement("canvas");
+      const k=Math.min(1,340/cv2.width,460/cv2.height);
+      th.width=Math.max(1,Math.round(cv2.width*k)); th.height=Math.max(1,Math.round(cv2.height*k));
+      th.getContext("2d").drawImage(cv2,0,0,th.width,th.height);
+      pages.push({blob, thumb:th.toDataURL("image/jpeg",0.72), ratio:cv2.width/cv2.height});
+      cv2.width=cv2.height=th.width=th.height=0;
+      segs[i].cv.width=segs[i].cv.height=0;
+    }
   }
   if(!pages.length) throw new Error("未能解析出文档内容（可能不是标准 DOCX，老 .doc 请先另存为 .docx）");
   return pages;
@@ -2293,7 +2332,7 @@ App._imgThumbHTML = function(im,i, poolBadge){
   // poolBadge: 'main'|'tail'|'normal'|false —— 分区上传开启时显示池归属徽标（点击可循环切换）
   const label = poolBadge==="main"?"★ 主图" : poolBadge==="tail"?"◆ 尾图" : "普通";
   const badge = poolBadge
-    ? `<button class="pool-badge ${poolBadge}" title="点击切换素材分区" onclick="event.stopPropagation();App.toggleImgPool('${im.uid}')">${label}</button>`
+    ? `<button class="pool-badge ${poolBadge}" title="点击在 主图 / 尾图 / 普通 之间转换" onclick="event.stopPropagation();App.toggleImgPool('${im.uid}')">${label}</button>`
     : "";
   return `<div class="img-thumb" title="${App.esc(im.name)}">
       <img src="${im.dataUrl}" alt="" loading="lazy">
@@ -2355,7 +2394,7 @@ App.renderImages = function(){
   }).join(" · ");
   const sec=(title,list,pool)=>`
     <div class="pool-sec">
-      <div class="pool-head"><b>${title}</b><span class="small muted">（${list.length} 张，点击素材角标可切换归属）</span></div>
+      <div class="pool-head"><b>${title}</b><span class="small muted">（${list.length} 张，点击图片左上角角标，可在 主图 / 尾图 / 普通 之间随意转换）</span></div>
 
       <div class="img-strip">${list.map((im,i)=>App._imgThumbHTML(im,i,pool)).join("") || '<span class="small muted" style="padding:2px 2px 8px">暂无</span>'}</div>
     </div>`;
@@ -4237,8 +4276,10 @@ App.renderSets = function(){
       <div class="set-top">
         ${App.state.manageMode?`<input type="checkbox" class="chk" ${App.state.selectedSets.has(s.uid)?"checked":""} onclick="event.stopPropagation();App.toggleSelectSet(${si},this.checked)">`:""}
         <span class="caret" onclick="event.stopPropagation();App.toggleSetCollapsed(${si})" title="${s.collapsed?"展开本方案":"折叠本方案"}">${s.collapsed?"▸ 展开":"▾ 折叠"}</span>
-        <input class="set-title" id="setTitle-${si}" value="${App.esc(s.name)}" onfocus="App.setActiveSet(${si})" oninput="App.renameSets(${si})" onclick="event.stopPropagation()">
-        <span class="small muted" style="flex-shrink:0;cursor:text" onclick="event.stopPropagation();App.focusSetTitle(${si})" title="点击编辑方案名">✏️ 可重命名</span>
+        <span class="set-namebox" onclick="event.stopPropagation();App.focusSetTitle(${si})" title="点击编辑方案名">
+          <input class="set-title" id="setTitle-${si}" value="${App.esc(s.name)}" onfocus="App.setActiveSet(${si})" oninput="App.renameSets(${si})" onclick="event.stopPropagation()">
+          <span class="pen">✏️ 可重命名</span>
+        </span>
         <span class="pill">${s.pages.length}页模板</span>
         <span class="pill">${sumText}</span>
         ${mainPill}
