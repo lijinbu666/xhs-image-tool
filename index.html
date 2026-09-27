@@ -7,7 +7,7 @@
 <title>小红书配图便捷生成工具</title>
 <style>
 :root{
-  --bg:#f6f1e8; --panel:#fffdf8; --ink:#231d18; --ink2:#6d6157; --ink3:#a99d8f;
+  --bg:#f6f1e8; --panel:#fffdf8; --ink:#231d18; --ink2:#5f564b; --ink3:#85786a;
   --line:#e9e0d2; --brand:#e93a50; --brand-d:#c92541; --brand-l:#fdeef0;
   --pink:#e93a50; --pink-d:#c92541; --green:#1e8a5e; --green-l:#e7f4ed;
   --gold:#c98a1e; --warn-bg:#fdf3e2; --warn-ink:#a3690f;
@@ -21,7 +21,7 @@
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
-body{font-family:var(--serif);font-weight:400;background:var(--bg);background-image:var(--grain);color:var(--ink);font-size:13px;overflow:hidden}
+body{font-family:var(--serif);font-weight:400;-webkit-text-stroke:.3px currentColor;background:var(--bg);background-image:var(--grain);color:var(--ink);font-size:13px;overflow:hidden}
 ::selection{background:var(--brand-l);color:var(--brand-d)}
 button{font-family:inherit;cursor:pointer;border:1px solid #ddd2c0;background:var(--panel);color:var(--ink);border-radius:9px;padding:7px 14px;font-size:13px;transition:.15s;white-space:nowrap}
 button:hover{border-color:#c2b4a0;background:#fbf6ec;transform:translateY(-1px);box-shadow:0 3px 10px rgba(88,62,40,.10)}
@@ -233,7 +233,7 @@ body.is-admin #btnTplSel{display:inline-block}
 .hi-main{display:flex;flex-direction:column;gap:6px;min-width:220px;flex:1}
 .hi-name{font-weight:700;font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .hi-meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
-.hi-chip{font-size:11px;padding:2px 9px;border-radius:999px;background:#f5efe2;color:#6d6157;border:1px solid #e6dcc9;white-space:nowrap}
+.hi-chip{font-size:11px;padding:2px 9px;border-radius:999px;background:#f5efe2;color:var(--ink2);border:1px solid #e6dcc9;white-space:nowrap}
 .hi-chip.t{background:#fdeef0;color:#b23246;border-color:#f5cdd3}
 .hi-chip.i{background:#eaf6ef;color:#22744c;border-color:#cfe8d8}
 .hi-ops{display:flex;gap:8px;flex-shrink:0}
@@ -688,7 +688,7 @@ body.is-admin #btnTplSel{display:inline-block}
         <div class="dropzone" id="dropzone" onclick="document.getElementById('imgFileInput').click()">
           <div class="up">↑</div>
           拖拽图片 / PDF / PPT / Word 到此处，或点击批量上传
-          <div class="small" style="margin-top:5px;color:#b0a291">📷 支持图片；📕 PDF / PPT / Word 自动转图片（可勾选页面）；📋 截图后直接 <b>Ctrl+V</b> 粘贴上传</div>
+          <div class="small" style="margin-top:5px;color:#948674">📷 支持图片；📕 PDF / PPT / Word 自动转图片（可勾选页面）；📋 截图后直接 <b>Ctrl+V</b> 粘贴上传</div>
         </div>
         <input type="file" id="imgFileInput" accept="image/*,.pdf,application/pdf,.pptx,.docx" multiple class="hidden" onchange="App.handleFiles(this.files)">
         <div class="img-strip" id="imgGrid"></div>
@@ -949,7 +949,7 @@ const CURRENT_PASSWORD_HASH = "bba1b366a8205a4ccbe8277d46e21497cf1a93d3cd40c996c
 const AUTH_SESSION_KEY = "xhs_auth_session";
 const AUTH_PERM_KEY    = "xhs_auth_perm_v1";
 const GUIDE_KEY = "xhs_guide_seen_v1";
-const TOOL_VERSION = "1.0.21";
+const TOOL_VERSION = "1.0.22";
 const REMOTE_VERSION_URL = "./version.json";
 const VERSION_SEEN_KEY = "xhs_last_version";
 const VERSION_SEEN_KEY_OLD = "xhs_seen_version_v1";
