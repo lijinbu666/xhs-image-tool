@@ -762,7 +762,7 @@ body.is-admin #btnTplSel{display:inline-block}
         </div>
       </div>
       <div class="set-hint">
-        点击左侧模板，会添加到当前方案（<b>蓝色边框</b>为当前方案，点击方案卡可切换）。每套方案独立排版模板顺序，排好后点右上角「生成」，再点「检查」替换修改；全部确认后用底部按钮统一导出。
+        点击左侧模板，会添加到当前方案（<b>红色边框</b>为当前方案，点击方案卡可切换）。每套方案独立排版模板顺序，排好后点右上角「生成」，再点「检查」替换修改；全部确认后用底部按钮统一导出。
       </div>
       <div class="manage-strip" id="manageBar">
         <label class="row small"><input type="checkbox" class="chk" id="manageAll" onchange="App.manageSelectAll(this.checked)"> 全选</label>
@@ -959,7 +959,7 @@ const CURRENT_PASSWORD_HASH = "bba1b366a8205a4ccbe8277d46e21497cf1a93d3cd40c996c
 const AUTH_SESSION_KEY = "xhs_auth_session";
 const AUTH_PERM_KEY    = "xhs_auth_perm_v1";
 const GUIDE_KEY = "xhs_guide_seen_v1";
-const TOOL_VERSION = "1.0.23";
+const TOOL_VERSION = "1.0.24";
 const REMOTE_VERSION_URL = "./version.json";
 const VERSION_SEEN_KEY = "xhs_last_version";
 const VERSION_SEEN_KEY_OLD = "xhs_seen_version_v1";
@@ -2286,50 +2286,109 @@ App.openDocPager = async function(file){
     App.pp.busy=false;
   }
 };
-// PPTX：单页模式逐页「渲染→截图→释放」，任何页数都稳；解析失败自动重建重试一次，个别页失败跳过不卡死
+// PPTX：一次性独立渲染容器 + viewer（不复用共享 host——旧 viewer 闭包状态跨次残留是间歇失败根源之一）。
+// 解析四级兜底：slide 模式 load → slide 模式 preview → 重建重试 → list 模式全量渲染收集。
 App._renderPptxPages = async function(file,prog){
   await App.loadScriptOnce(App.DOC_LIBS.pptx);
   await App.loadScriptOnce(App.DOC_LIBS.h2c);
   if(!window.pptxPreview||typeof window.pptxPreview.init!=="function")
     throw new Error("PPTX 渲染组件加载失败，请检查网络后重试");
   const buf=await file.arrayBuffer();
-  // 解析：load 失败自动走 preview 兜底；整体失败重建 viewer 重试一次（首次初始化偶发竞态导致时好时坏）
-  let total=0, host=null, viewer=null;
+  const mkHost=()=>{
+    const h=document.createElement("div");
+    h.style.cssText="position:fixed;left:-20000px;top:0;width:1000px;background:#fff;z-index:-1;";
+    document.body.appendChild(h);
+    return h;
+  };
+  let total=0, host=null, viewer=null, listEls=null, firstErr=null;
   const parseOnce=async()=>{
-    host=App._docRenderHost(1000);
+    if(host) host.remove();
+    host=mkHost();
     viewer=window.pptxPreview.init(host,{width:960,mode:"slide"});
     total=0;
     try{
       const pptx=await viewer.load(buf);
       total=(pptx&&pptx.slides&&pptx.slides.length)||(viewer.slideCount||0);
-    }catch(e){}
+    }catch(e){ firstErr=firstErr||e; }
     if(!total){
-      try{ await viewer.preview(buf); }catch(e){}
-      total=viewer.slideCount||App._collectPageEls(host).length||0;
+      try{ await viewer.preview(buf); }catch(e){ firstErr=firstErr||e; }
+      total=viewer.slideCount||0;
     }
   };
   try{ await parseOnce(); }
-  catch(e){ App.reportError("pptx-parse",e); }
+  catch(e){ firstErr=firstErr||e; App.reportError("pptx-parse",e); }
   if(!total){
     await App._nextFrames();
     try{ await parseOnce(); }catch(e){}
   }
-  if(!total) throw new Error("未能解析出幻灯片（可能不是标准 PPTX，老 .ppt 请先另存为 .pptx）");
+  // 终极兜底：list 模式一次渲染全部页再通用收集（slide 模式解析不出时仍可出图）
+  if(!total){
+    try{
+      if(host) host.remove();
+      host=mkHost();
+      viewer=window.pptxPreview.init(host,{width:960,mode:"list"});
+      await viewer.preview(buf);
+      await App._nextFrames();
+      listEls=App._collectPageEls(host);
+      total=listEls.length||0;
+    }catch(e){ firstErr=firstErr||e; }
+  }
+  if(!total){
+    if(host) host.remove();
+    const why=firstErr?("（组件报错："+String(firstErr&&firstErr.message||firstErr).slice(0,80)+"）"):"";
+    throw new Error("未能解析出幻灯片"+why+"。若反复失败：请用 Office/WPS 打开后另存为新的 .pptx，或导出 PDF 后用「PDF 转图片」。");
+  }
   const pages=[];
-  for(let i=0;i<total;i++){
-    prog&&prog(i+1,total);
-    try{ viewer.renderSingleSlide(i); }catch(e){}
-    await App._nextFrames();
-    let el=host.querySelector(".pptx-preview-slide-wrapper-"+i);   // slide 模式按类名直接取当前页（通用收集器取不到：wrapper 只含 1 个绝对定位子元素，高度塌缩）
-    if(!el){ await App._nextFrames(); el=host.querySelector(".pptx-preview-slide-wrapper-"+i); }   // 偶发渲染时序：再等一帧重找
-    if(!el) continue;                        // 该页渲染失败：跳过，不卡死
-    try{ pages.push(await App._snapHi(el)); }
-    catch(e){ App.reportError("pptx-page",e); }   // 单页截图失败跳过，不拖垮整篇
-    try{ viewer.removeCurrentSlide(); }catch(e){}
-    el.remove();
+  try{
+    for(let i=0;i<total;i++){
+      prog&&prog(i+1,total);
+      if(listEls){   // list 兜底路径：直接截收集到的每页
+        const el=listEls[i];
+        if(el){ try{ pages.push(await App._snapHi(el)); }catch(e){ App.reportError("pptx-page",e); } }
+        continue;
+      }
+      try{ viewer.renderSingleSlide(i); }catch(e){}
+      await App._nextFrames();
+      let el=host.querySelector(".pptx-preview-slide-wrapper-"+i);   // slide 模式按类名直接取当前页（通用收集器取不到：wrapper 只含 1 个绝对定位子元素，高度塌缩）
+      for(let w=0; w<2 && !el; w++){   // 偶发渲染时序：等 120ms×2 重找
+        await new Promise(r=>setTimeout(r,120));
+        await App._nextFrames();
+        el=host.querySelector(".pptx-preview-slide-wrapper-"+i);
+      }
+      if(!el) continue;                        // 该页渲染失败：跳过，不卡死
+      try{ pages.push(await App._snapHi(el)); }
+      catch(e){ App.reportError("pptx-page",e); }   // 单页截图失败跳过，不拖垮整篇
+      try{ viewer.removeCurrentSlide(); }catch(e){}
+      el.remove();
+    }
+  }finally{
+    if(host) host.remove();   // 一次性容器用完即删，不残留状态
   }
   if(!pages.length) throw new Error("幻灯片内容渲染失败，请稍后重试或先导出为 PDF");
   return pages;
+};
+// 超长文档窗口切片：把渲染内容移入固定 A4 高的窗口逐屏截图。
+// 根治：无分页标记的长文整篇截图高度超浏览器画布上限（32767px）→ html2canvas 确定性返回 0 尺寸画布，重试无效。
+App._snapTallByWindows = async function(content, W, prog){
+  const pageH=Math.round(W*1.4142);
+  const total=Math.max(content.offsetHeight||0, content.scrollHeight||0);
+  const wins=Math.max(1,Math.ceil(total/pageH));
+  const win=document.createElement("div");
+  win.style.cssText=`position:fixed;left:-20000px;top:0;width:${W}px;height:${pageH}px;overflow:hidden;background:#fff;z-index:-1;`;
+  content.style.margin="0"; content.style.marginTop="0";
+  win.appendChild(content);   // 移动（非克隆）：无额外内存开销；不改内容宽度（docx section 自带固定宽）
+  document.body.appendChild(win);
+  const out=[];
+  try{
+    for(let i=0;i<wins;i++){
+      prog&&prog(i+1,wins);
+      content.style.marginTop=(-i*pageH)+"px";
+      await App._nextFrames();
+      try{ out.push(await App._snapHi(win)); }
+      catch(e){ App.reportError("docx-win",e); }   // 个别窗口失败跳过
+    }
+  }finally{ win.remove(); }
+  return out;
 };
 // DOCX：docx-preview 整篇渲染，Word 分页标记输出多个 section；无分页标记的长文整图按 A4 空白行智能切片
 App._renderDocxPages = async function(file,prog){
@@ -2367,22 +2426,40 @@ App._renderDocxPages = async function(file,prog){
     }
     if(!pages.length && secs.length) throw new Error("文档页面渲染失败，请稍后重试或先导出为 PDF");
   }else{
+    // firstElementChild 可能是无尺寸的辅助节点（如 <style>）：选第一个有实际尺寸的子元素，再兜底 section/host
+    const content=[...host.children].find(el=>el.offsetWidth>2&&el.offsetHeight>2)
+      || host.querySelector("section.docx") || host;
+    const estH=Math.max(content.offsetHeight||0, content.scrollHeight||0);
+    const winW=Math.max(320, content.offsetWidth||host.offsetWidth||794);   // 开窗宽度=内容自身宽，避免右侧被裁
     prog&&prog(1,1);
-    const tall=await App._snapEl(host.firstElementChild||host,1.2);
-    if(!tall||!tall.width||!tall.height) throw new Error("文档渲染失败（渲染时序竞态），请重试");
-    const segs=App._splitTallCanvas(App._capCanvas(tall,2000));
-    tall.width=tall.height=0;
-    for(let i=0;i<segs.length;i++){
-      prog&&prog(i+1,segs.length);
-      const cv2=App._capCanvas(segs[i].cv,2000);
-      const blob=await new Promise(res=>cv2.toBlob(res,"image/png"));
-      const th=document.createElement("canvas");
-      const k=Math.min(1,340/cv2.width,460/cv2.height);
-      th.width=Math.max(1,Math.round(cv2.width*k)); th.height=Math.max(1,Math.round(cv2.height*k));
-      th.getContext("2d").drawImage(cv2,0,0,th.width,th.height);
-      pages.push({blob, thumb:th.toDataURL("image/jpeg",0.72), ratio:cv2.width/cv2.height});
-      cv2.width=cv2.height=th.width=th.height=0;
-      segs[i].cv.width=segs[i].cv.height=0;
+    // 估算高度 ×1.2 scale 超 30000px（画布安全线）→ 直接窗口切片，不赌整篇截图（超限必返 0 尺寸）
+    if(estH*1.2>30000){
+      const winPages=await App._snapTallByWindows(content,winW,prog);
+      if(!winPages.length) throw new Error("文档页面渲染失败，请稍后重试或先导出为 PDF");
+      pages.push(...winPages);
+    }else{
+      const tall=await App._snapEl(content,1.2);
+      if(!tall||!tall.width||!tall.height){
+        // 整篇截图失败（偶发竞态或临界超限）→ 窗口切片兜底
+        const winPages=await App._snapTallByWindows(content,winW,prog);
+        if(!winPages.length) throw new Error("文档渲染失败，请重试或先导出为 PDF");
+        pages.push(...winPages);
+      }else{
+        const segs=App._splitTallCanvas(App._capCanvas(tall,2000));
+        tall.width=tall.height=0;
+        for(let i=0;i<segs.length;i++){
+          prog&&prog(i+1,segs.length);
+          const cv2=App._capCanvas(segs[i].cv,2000);
+          const blob=await new Promise(res=>cv2.toBlob(res,"image/png"));
+          const th=document.createElement("canvas");
+          const k=Math.min(1,340/cv2.width,460/cv2.height);
+          th.width=Math.max(1,Math.round(cv2.width*k)); th.height=Math.max(1,Math.round(cv2.height*k));
+          th.getContext("2d").drawImage(cv2,0,0,th.width,th.height);
+          pages.push({blob, thumb:th.toDataURL("image/jpeg",0.72), ratio:cv2.width/cv2.height});
+          cv2.width=cv2.height=th.width=th.height=0;
+          segs[i].cv.width=segs[i].cv.height=0;
+        }
+      }
     }
   }
   if(!pages.length) throw new Error("未能解析出文档内容（可能不是标准 DOCX，老 .doc 请先另存为 .docx）");
