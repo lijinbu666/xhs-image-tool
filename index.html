@@ -309,6 +309,12 @@ body.is-admin #btnTplSel{display:inline-block}
 #edStage.multi-sel .ed-ph.shape-ph.clipped.sel{border:1px dashed rgba(35,29,24,.45)}
 #edStage.multi-sel .ed-ph.sel .ed-handle{display:none}
 #edStage.multi-sel .ed-ph.sel .tag{display:none}
+/* 全局进度浮条：转图/批量导入等耗时操作时在底部显示进度，pointer-events:none 不挡操作 */
+#busyBar{position:fixed;left:50%;bottom:18px;transform:translateX(-50%) translateY(70px);z-index:1200;background:var(--ink);color:#fff;border-radius:999px;padding:8px 18px;font-size:12.5px;letter-spacing:.05em;box-shadow:var(--shadow);display:flex;align-items:center;gap:10px;transition:transform .25s ease;pointer-events:none;max-width:86vw}
+#busyBar.show{transform:translateX(-50%) translateY(0)}
+#busyBar .bb-track{width:130px;height:5px;border-radius:99px;background:rgba(255,255,255,.25);overflow:hidden;flex:none}
+#busyBar .bb-fill{height:100%;width:0;background:var(--brand);border-radius:99px;transition:width .2s ease}
+#busyBar .bb-txt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #edPanel{width:290px;background:#fff;border-left:1px solid var(--line);overflow-y:auto;flex:0 0 290px;position:relative}
 #panelResizer{position:absolute;left:-3px;top:0;width:6px;height:100%;cursor:ew-resize;z-index:10}
 .ed-sec{padding:12px;border-bottom:1px solid var(--line)}
@@ -959,7 +965,7 @@ const CURRENT_PASSWORD_HASH = "bba1b366a8205a4ccbe8277d46e21497cf1a93d3cd40c996c
 const AUTH_SESSION_KEY = "xhs_auth_session";
 const AUTH_PERM_KEY    = "xhs_auth_perm_v1";
 const GUIDE_KEY = "xhs_guide_seen_v1";
-const TOOL_VERSION = "1.0.24";
+const TOOL_VERSION = "1.0.25";
 const REMOTE_VERSION_URL = "./version.json";
 const VERSION_SEEN_KEY = "xhs_last_version";
 const VERSION_SEEN_KEY_OLD = "xhs_seen_version_v1";
@@ -1933,6 +1939,7 @@ App._ingestImageFiles = async function(files){
     seen.add(hash); todo.push({f,hash});
   });
   if(!todo.length){ App.renderImages(); if(dup) App.toast(`已跳过重复图片 ${dup} 张`); return; }
+  App.busyBar(`正在导入图片 0 / ${todo.length} 张`, 0, todo.length);
   // 上传开始时固化本次归属（中途切换素材池不影响本批），保证顺序与选择顺序一致：
   // 分批并行解码 → 同批内按 todo 原始顺序依次 push
   const asMain = !!(App.state.presetMain && targetPool==="main");
@@ -1955,6 +1962,8 @@ App._ingestImageFiles = async function(files){
       added++;
       paint(false);
     });
+    App.busyBar(`正在导入图片 ${Math.min(i+batch.length,todo.length)} / ${todo.length} 张`, i+batch.length, todo.length);
+    await new Promise(r=>setTimeout(r,0));   // 让出主线程：导入期间界面保持可响应
     paint(false);
   }
   App.renderImages();
@@ -1967,6 +1976,7 @@ App._ingestImageFiles = async function(files){
   if(compressed) msgs.push(`自动压缩大图 ${compressed} 张`);
   if(dup) msgs.push(`跳过重复 ${dup} 张`);
   if(failed) msgs.push(`${failed} 张失败`);
+  App.busyBar("");
   App.toast(msgs.join("，"));
 };
 
@@ -2022,6 +2032,7 @@ App.openPdfPager = async function(file){
     App.$("#ppGrid").innerHTML="";
     // 顺序渲染缩略图（避免大 PDF 并发爆内存）
     for(let n=1;n<=pdf.numPages;n++){
+      App.busyBar(`正在读取 PDF 第 ${n} / ${pdf.numPages} 页（${file.name}）`, n, pdf.numPages);
       const page=await pdf.getPage(n);
       const vp0=page.getViewport({scale:1});
       const scale=Math.min(300/vp0.width, 420/vp0.height, 1.6);
@@ -2045,6 +2056,7 @@ App.openPdfPager = async function(file){
     App.$("#ppGrid").innerHTML=`<div class="pp-loading">PDF 解析失败：${App.esc(e.message||"未知错误")}<br>请检查文件是否加密 / 损坏，或稍后重试。</div>`;
   }finally{
     App.pp.busy=false;
+    App.busyBar("");
   }
 };
 App.closePdfPager = function(){
@@ -2097,6 +2109,7 @@ App.ppConfirm = async function(){
       for(let i=0;i<nums.length;i++){
         const n=nums[i];
         btn.textContent=`正在转图片 ${i+1} / ${nums.length}…`;
+        App.busyBar(`正在转图片 ${i+1} / ${nums.length} 页（${App.pp.file.name}）`, i+1, nums.length);
         await new Promise(r=>setTimeout(r,0));   // 让进度先刷新出来
         const page=await pdf.getPage(n);
         // 高清导出：scale=2（约 144 DPI）；长边封顶 2000px 防内存爆炸
@@ -2118,11 +2131,13 @@ App.ppConfirm = async function(){
       }
     }
     App.closePdfPager();
+    App.busyBar("");
     App.toast(`已把${kind==="pdf"?"PDF":"文档"}的 ${out.length} 页转为图片`);
     App._ingestImageFiles(out);
   }catch(e){
     App.reportError("doc-render",e);
     btn.disabled=false; btn.textContent="导入选中页";
+    App.busyBar("");
     App.toast("部分页面转图失败，请重试");
   }
 };
@@ -2191,8 +2206,21 @@ App._capCanvas = function(cv,longMax){
   out.getContext("2d").drawImage(cv,0,0,out.width,out.height);
   return out;
 };
+// 等待容器内所有 <img> 完成解码再截图：否则 html2canvas 截到未绘制状态产出全白页
+App._waitImgs = async function(root){
+  try{
+    const imgs=[...root.querySelectorAll("img")].filter(im=>!im.complete||!im.naturalWidth);
+    if(!imgs.length) return;
+    await Promise.race([
+      Promise.all(imgs.map(im=>new Promise(res=>{ im.onload=()=>res(); im.onerror=()=>res(); setTimeout(res,4000); }))),
+      new Promise(res=>setTimeout(res,5000))
+    ]);
+    await App._nextFrames();
+  }catch(e){}
+};
 App._snapEl = async function(el,scale){
   if(document.fonts&&document.fonts.ready) try{ await document.fonts.ready; }catch(e){}
+  await App._waitImgs(el);
   await App._nextFrames();
   // 竞态防护：布局偶发未稳定（元素尺寸为 0）时稍候重测，避免 html2canvas 产出 0 尺寸画布
   for(let i=0;i<3 && (el.offsetWidth<2||el.offsetHeight<2);i++){
@@ -2200,6 +2228,19 @@ App._snapEl = async function(el,scale){
     await App._nextFrames();
   }
   return html2canvas(el,{scale,backgroundColor:"#ffffff",useCORS:true,logging:false,imageTimeout:8000});
+};
+// 由画布直接产出页面记录（blob + 缩略图 + 比例）；zip 兜底渲染器与截图共用
+App._pageFromCanvas = async function(cv){
+  const cv2=App._capCanvas(cv,2000);
+  const blob=await new Promise(res=>cv2.toBlob(res,"image/png"));
+  if(!blob) throw new Error("页面导出失败，请重试");
+  const th=document.createElement("canvas");
+  const k=Math.min(1,340/cv2.width,460/cv2.height);
+  th.width=Math.max(1,Math.round(cv2.width*k)); th.height=Math.max(1,Math.round(cv2.height*k));
+  th.getContext("2d").drawImage(cv2,0,0,th.width,th.height);
+  const out={blob, thumb:th.toDataURL("image/jpeg",0.72), ratio:cv2.width/cv2.height};
+  cv2.width=cv2.height=th.width=th.height=0;
+  return out;
 };
 // 一次高清截图同时产出：入库用 PNG blob + 选页用缩略图（避免截两遍）
 App._snapHi = async function(el){
@@ -2210,15 +2251,8 @@ App._snapHi = async function(el){
     cv=await App._snapEl(el,2);
   }
   if(!cv||!cv.width||!cv.height) throw new Error("页面截图失败（渲染时序竞态），请重试");
-  const cv2=App._capCanvas(cv,2000);
-  const blob=await new Promise(res=>cv2.toBlob(res,"image/png"));
-  if(!blob) throw new Error("页面导出失败，请重试");
-  const th=document.createElement("canvas");
-  const k=Math.min(1,340/cv2.width,460/cv2.height);
-  th.width=Math.max(1,Math.round(cv2.width*k)); th.height=Math.max(1,Math.round(cv2.height*k));
-  th.getContext("2d").drawImage(cv2,0,0,th.width,th.height);
-  const out={blob, thumb:th.toDataURL("image/jpeg",0.72), ratio:cv2.width/cv2.height};
-  cv.width=cv.height=th.width=th.height=0;   // 释放位图
+  const out=await App._pageFromCanvas(cv);
+  cv.width=cv.height=0;
   return out;
 };
 // 一张超长画布按 A4 比例切片，优先在整行空白处下刀，避免把文字拦腰截断
@@ -2249,6 +2283,18 @@ App._splitTallCanvas = function(cv){
   }
   return out;
 };
+// 全局进度浮条：耗时操作（转图/批量导入）时底部提示当前进度；text 为空则收起
+App.busyBar = function(text, cur, total){
+  const bar=App.$("#busyBar"); if(!bar) return;
+  if(!text){ bar.classList.remove("show"); return; }
+  bar.querySelector(".bb-txt").textContent=text;
+  const fill=bar.querySelector(".bb-fill");
+  const track=bar.querySelector(".bb-track");
+  if(typeof cur==="number"&&typeof total==="number"&&total>0){
+    track.style.display=""; fill.style.width=Math.min(100,Math.round(cur/total*100))+"%";
+  }else{ track.style.display="none"; fill.style.width="0"; }
+  bar.classList.add("show");
+};
 App.openDocPager = async function(file){
   if(App.pp.busy) return;
   App.pp.busy=true;
@@ -2261,7 +2307,7 @@ App.openDocPager = async function(file){
   App.$("#ppOkBtn").disabled=true;
   App.$("#pdfPagerModal").classList.add("show");
   try{
-    const prog=(n,t)=>{ const el=App.$("#ppProg"); if(el) el.innerHTML=`正在转换 <b>${n}</b> / ${t} 页（每页约零点几秒，请稍候）…`; };
+    const prog=(n,t)=>{ const el=App.$("#ppProg"); if(el) el.innerHTML=`正在转换 <b>${n}</b> / ${t} 页（每页约零点几秒，请稍候）…`; App.busyBar(`正在转图片 ${n} / ${t} 页（${file.name}）`,n,t); };
     const raw = isPpt ? await App._renderPptxPages(file,prog) : await App._renderDocxPages(file,prog);
     if(!raw.length) throw new Error("未能解析出页面内容，请确认文件未损坏");
     const pages=raw.map((p,i)=>({n:i+1, file:new File([p.blob],`${base}_p${i+1}.png`,{type:"image/png"}), thumb:p.thumb, ratio:p.ratio}));
@@ -2284,7 +2330,83 @@ App.openDocPager = async function(file){
     App.$("#ppGrid").innerHTML=`<div class="pp-loading">文档解析失败：${App.esc(e&&e.message||"未知错误")}<br>请确认文件未损坏；老格式（.ppt / .doc）请先另存为 .pptx / .docx 或 PDF。</div>`;
   }finally{
     App.pp.busy=false;
+    App.busyBar("");
   }
+};
+// 终极兜底渲染器：pptx-preview 库对部分文件结构有内部缺陷（如 reading 'background'），四级解析全走库必失败。
+// 直接 JSZip 解压自绘：读取幻灯片尺寸与每页 <p:pic> 图片按位置绘制。图片型 PPT 完整还原；文字型还原图片层（仍好过整体失败）。
+App._renderPptxByZip = async function(file,prog){
+  await App.loadScriptOnce(App.DOC_LIBS.jszip);
+  const zip=await window.JSZip.loadAsync(await file.arrayBuffer());
+  const read=async p=>{ const f=zip.file(p); return f?f.async("string"):null; };
+  const readBin=async p=>{ const f=zip.file(p); return f?f.async("blob"):null; };
+  // 幻灯片尺寸（EMU 单位），缺省 16:9
+  let SW=12192000, SH=6858000;
+  const pres=await read("ppt/presentation.xml");
+  if(pres){ const m=pres.match(/sldSz[^>]*cx="(\d+)"[^>]*cy="(\d+)"/); if(m){ SW=+m[1]; SH=+m[2]; } }
+  // 页顺序：presentation.xml 的 sldIdLst → presentation.xml.rels 映射到具体 slideN.xml
+  let order=[];
+  if(pres){
+    const rels=await read("ppt/_rels/presentation.xml.rels")||"";
+    const rmap={};
+    rels.replace(/<Relationship[^>]*Id="([^"]+)"[^>]*Target="([^"]+)"/g,(_,id,t)=>{ rmap[id]=t; return 1; });
+    (pres.match(/<p:sldId[^>]*r:id="([^"]+)"/g)||[]).forEach(s=>{
+      const m=s.match(/r:id="([^"]+)"/); const t=m&&rmap[m[1]]; if(!t) return;
+      let p=t.replace(/^\.\.\//,"ppt/"); if(!p.startsWith("ppt/")) p="ppt/"+t;
+      order.push(p);
+    });
+  }
+  if(!order.length){
+    order=Object.keys(zip.files).filter(p=>/^ppt\/slides\/slide\d+\.xml$/.test(p))
+      .sort((a,b)=>(+a.match(/\d+/)[0])-(+b.match(/\d+/)[0]));
+  }
+  if(!order.length) throw new Error("PPTX 内无幻灯片数据");
+  const CW=1280, CH=Math.max(2,Math.round(CW*SH/SW));
+  const pages=[];
+  for(let i=0;i<order.length;i++){
+    prog&&prog(i+1,order.length);
+    await new Promise(r=>setTimeout(r,0));   // 让出主线程，保持界面可响应
+    try{
+      const xml=await read(order[i]);
+      const dir=order[i].replace(/slide\d+\.xml$/,"");
+      const relsXml=await read(dir+"_rels/"+order[i].split("/").pop()+".rels")||"";
+      const rmap={};
+      relsXml.replace(/<Relationship[^>]*Id="([^"]+)"[^>]*Target="([^"]+)"/g,(_,id,t)=>{
+        let p=t.replace(/^\.\.\//,"ppt/"); if(!p.startsWith("ppt/")) p="ppt/slides/"+t;
+        rmap[id]=p; return 1;
+      });
+      const cv=document.createElement("canvas"); cv.width=CW; cv.height=CH;
+      const cx=cv.getContext("2d");
+      cx.fillStyle="#ffffff"; cx.fillRect(0,0,CW,CH);
+      if(xml){
+        const pics=xml.match(/<p:pic>[\s\S]*?<\/p:pic>/g)||[];   // 文档序即 z 序
+        for(const pic of pics){
+          try{
+            const rid=(pic.match(/r:embed="([^"]+)"/)||[])[1];
+            const path=rid&&rmap[rid];
+            const blob=path&&await readBin(path);
+            if(!blob) continue;
+            const url=URL.createObjectURL(blob);
+            const im=await new Promise(res=>{
+              const q=new Image(); q.onload=()=>res(q); q.onerror=()=>res(null); q.src=url;
+              setTimeout(()=>res(q.complete?q:null),5000);
+            });
+            if(im){
+              let x=0, y=0, w=CW, h=CH;
+              const xf=pic.match(/<a:off x="(-?\d+)" y="(-?\d+)"\/><a:ext cx="(\d+)" cy="(\d+)"\/>/);
+              if(xf){ x=+xf[1]/SW*CW; y=+xf[2]/SH*CH; w=+xf[3]/SW*CW; h=+xf[4]/SH*CH; }
+              cx.drawImage(im,x,y,w,h);
+            }
+            URL.revokeObjectURL(url);
+          }catch(e){}
+        }
+      }
+      pages.push(await App._pageFromCanvas(cv));
+      cv.width=cv.height=0;
+    }catch(e){ App.reportError("pptx-zip-page",e); }   // 个别页失败跳过
+  }
+  if(!pages.length) throw new Error("PPTX 兜底解析失败");
+  return pages;
 };
 // PPTX：一次性独立渲染容器 + viewer（不复用共享 host——旧 viewer 闭包状态跨次残留是间歇失败根源之一）。
 // 解析四级兜底：slide 模式 load → slide 模式 preview → 重建重试 → list 模式全量渲染收集。
@@ -2321,7 +2443,7 @@ App._renderPptxPages = async function(file,prog){
     await App._nextFrames();
     try{ await parseOnce(); }catch(e){}
   }
-  // 终极兜底：list 模式一次渲染全部页再通用收集（slide 模式解析不出时仍可出图）
+  // 终极兜底 1：list 模式一次渲染全部页再通用收集（slide 模式解析不出时仍可出图）
   if(!total){
     try{
       if(host) host.remove();
@@ -2332,6 +2454,11 @@ App._renderPptxPages = async function(file,prog){
       listEls=App._collectPageEls(host);
       total=listEls.length||0;
     }catch(e){ firstErr=firstErr||e; }
+  }
+  // 终极兜底 2：库全败（含 reading 'background' 类内部缺陷）→ JSZip 解压自绘
+  if(!total){
+    try{ if(host) host.remove(); host=null; return await App._renderPptxByZip(file,prog); }
+    catch(e){ firstErr=firstErr||e; }
   }
   if(!total){
     if(host) host.remove();
@@ -6721,5 +6848,6 @@ App.edPaste = function(){
 // ================= 启动 =================
 App.init();
 </script>
+<div id="busyBar"><div class="bb-track"><div class="bb-fill"></div></div><span class="bb-txt"></span></div>
 </body>
 </html>
