@@ -965,7 +965,7 @@ const CURRENT_PASSWORD_HASH = "bba1b366a8205a4ccbe8277d46e21497cf1a93d3cd40c996c
 const AUTH_SESSION_KEY = "xhs_auth_session";
 const AUTH_PERM_KEY    = "xhs_auth_perm_v1";
 const GUIDE_KEY = "xhs_guide_seen_v1";
-const TOOL_VERSION = "1.0.26";
+const TOOL_VERSION = "1.0.27";
 const REMOTE_VERSION_URL = "./version.json";
 const VERSION_SEEN_KEY = "xhs_last_version";
 const VERSION_SEEN_KEY_OLD = "xhs_seen_version_v1";
@@ -6770,12 +6770,23 @@ App.updateOutdirBar = function(h){
 };
 App.chooseOutputDir = async function(){
   if(!App.fsSupported()) return App.toast("当前浏览器不支持，请改用 ZIP 下载（推荐 Chrome/Edge）");
+  let h=null;
   try{
-    const h=await window.showDirectoryPicker({mode:"readwrite"});
+    h=await window.showDirectoryPicker({mode:"readwrite"});
+  }catch(e){
+    const msg=String(e&&e.message||e);
+    if(/aborted/i.test(msg)&&!/internal/i.test(msg)) return;   // 用户主动取消
+    App.reportError("outdir-choose",e);
+    return App.toast("弹出文件夹选择框失败："+msg+"，请重试或改用「打包 ZIP 下载」");
+  }
+  App.updateOutdirBar(h);   // 先亮出绑定状态，持久化失败也不影响本次使用
+  try{
     await App._idbPut("dir",h);
-    App.updateOutdirBar(h);
     App.toast("输出文件夹已设置");
-  }catch(e){ /* 用户取消 */ }
+  }catch(e){
+    App.reportError("outdir-persist",e);
+    App.toast("文件夹已选择（本机存储不可用，刷新后需重新选择）");
+  }
 };
 App.forgetOutputDir = async function(){
   await App._idbDel("dir"); App.updateOutdirBar(null); App.toast("已解除绑定");
@@ -6786,10 +6797,34 @@ App.ensureDirPermission = async function(h){
   if((await h.requestPermission(opts))==="granted") return true;
   return false;
 };
+// 判断文件夹选择/授权类异常是否「用户主动取消」（AbortError 有两种：真取消 vs 激活过期的 Internal error）
+App._dirPickCancelled = e => !!(e&&/abort/i.test(String(e.name))&&/abort/i.test(String(e.message||""))&&!/internal/i.test(String(e.message||"")));
 App.exportAllFolder = App.guardAsync("exportFolder", async function(){
   if(!App.fsSupported()) return App.toast("当前浏览器不支持直存，请点「打包 ZIP 下载」");
+  // 关键：选择框与授权弹窗必须在点击的用户激活期内弹出（浏览器硬性要求）。
+  // 生成图片动辄几十秒，先生成再弹框会因激活过期报 AbortError: Internal error（v1.0.27 修复）。
+  let root=null;
+  try{ root=await App._idbGet("dir"); }catch(e){ App.reportError("outdir-get",e); }
+  if(root){
+    if(!(await App.ensureDirPermission(root))){
+      const again=await window.showDirectoryPicker({mode:"readwrite"}).catch(()=>null);   // 授权被拒→让用户当场重选一个
+      if(!again) return App.toast("文件夹写入权限未授予：请重新选择输出文件夹，或改用「打包 ZIP 下载」");
+      root=again;
+      try{ await App._idbPut("dir",root); }catch(e){ App.reportError("outdir-persist",e); }
+    }
+  }else{
+    try{
+      root=await window.showDirectoryPicker({mode:"readwrite"});
+    }catch(e){
+      if(App._dirPickCancelled(e)) return;
+      App.reportError("outdir-choose",e);
+      return App.toast("弹出文件夹选择框失败："+String(e&&e.message||e)+"，可先点「选择输出文件夹」绑定，或改用「打包 ZIP 下载」");
+    }
+    App.updateOutdirBar(root);
+    try{ await App._idbPut("dir",root); }catch(e){ App.reportError("outdir-persist",e); }
+  }
   App.showJob("正在生成图片…");
-  let jobs=null, root=null;
+  let jobs=null;
   try{
     App.saveSets(); App.scheduleImagesPersist(0); // 关键操作前先落盘
     jobs=await App.collectExportFiles((cur,total)=>{
@@ -6797,12 +6832,6 @@ App.exportAllFolder = App.guardAsync("exportFolder", async function(){
       App.updateJob(cur,total);
     });
     if(!jobs) return;
-    root=await App._idbGet("dir");
-    if(!root){
-      root=await window.showDirectoryPicker({mode:"readwrite"});
-      await App._idbPut("dir",root);
-    }
-    if(!(await App.ensureDirPermission(root))) return App.toast("没有文件夹写入权限");
     // 每套方案一个文件夹（collectExportFiles 已保证互重名）；同名文件夹直接复用、同名文件覆盖
     document.getElementById("jobTitle").textContent="正在写入文件夹…";
     let lastFolder=null,lastSub=null, ok=0, fail=0;
