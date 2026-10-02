@@ -965,7 +965,7 @@ const CURRENT_PASSWORD_HASH = "bba1b366a8205a4ccbe8277d46e21497cf1a93d3cd40c996c
 const AUTH_SESSION_KEY = "xhs_auth_session";
 const AUTH_PERM_KEY    = "xhs_auth_perm_v1";
 const GUIDE_KEY = "xhs_guide_seen_v1";
-const TOOL_VERSION = "1.0.27";
+const TOOL_VERSION = "1.0.28";
 const REMOTE_VERSION_URL = "./version.json";
 const VERSION_SEEN_KEY = "xhs_last_version";
 const VERSION_SEEN_KEY_OLD = "xhs_seen_version_v1";
@@ -1776,7 +1776,9 @@ App._remoteVersion = async function(){
     try{
       const ctrl = new AbortController();
       setTimeout(()=>ctrl.abort(), 4000);
-      const res = await fetch(REMOTE_VERSION_URL, {cache:"no-store", signal:ctrl.signal});
+      // GitHub Pages CDN 按 URL（含 query）缓存 max-age=600，cache:"no-store" 管不住边缘缓存——
+      // 必须 query buster 才能发布后立刻拿到新版本号，否则 10 分钟窗口内永远拉到旧版、不弹提示
+      const res = await fetch(REMOTE_VERSION_URL + "?t=" + Date.now(), {cache:"no-store", signal:ctrl.signal});
       if(res.ok){ const d=await res.json(); if(d && d.version) return String(d.version); }
     }catch(e){}
   }
@@ -1787,7 +1789,7 @@ App.checkUpdate = async function(){
     // 优先读取同目录 version.json（http 部署）；失败再回退 version.js（file:// 双击可用）
     let remote = await App._remoteVersion();
     if(!remote){
-      if(window.REMOTE_VERSION===undefined) await App._loadScript("./version.js");
+      if(window.REMOTE_VERSION===undefined) await App._loadScript(IS_OFFLINE ? "./version.js" : "./version.js?t=" + Date.now());
       if(/^[0-9]+\.[0-9]+\.[0-9]+$/.test(String(window.REMOTE_VERSION||""))) remote = String(window.REMOTE_VERSION);
     }
     if(!remote || !/^[0-9]+\.[0-9]+\.[0-9]+$/.test(remote)) return;  // 任何检查失败：静默跳过
@@ -1809,13 +1811,22 @@ App._markVersionSeen = v => { try{ localStorage.setItem(VERSION_SEEN_KEY, v); }c
 App.applyNewVersion = function(){
   const v = App.$("#verBannerV").textContent.replace(/^v/,"");
   App._markVersionSeen(v);
-  location.reload();
+  // index.html 同样被 CDN/浏览器缓存 max-age=600：普通 reload 可能仍拿旧版，
+  // 此时 seen 已标记新版 → 提示条永不再出现，用户卡在旧版。带 buster 重载确保真的换到新版
+  location.replace(location.pathname + "?v=" + Date.now() + location.hash);
 };
 App.dismissNewVersion = function(){
   const v = App.$("#verBannerV").textContent.replace(/^v/,"");
   App._markVersionSeen(v);
   App.$("#verBanner").classList.remove("show");
 };
+// 页面长期开着也要能收到更新：切回标签页时复查（60s 节流；boot 首查不走此处）
+App._lastVerCheck = 0;
+document.addEventListener("visibilitychange", ()=>{
+  if(document.hidden || Date.now()-App._lastVerCheck < 60000) return;
+  App._lastVerCheck = Date.now();
+  App.checkUpdate();
+});
 
 // ================= 状态 =================
 App.state = {
