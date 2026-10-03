@@ -965,7 +965,7 @@ const CURRENT_PASSWORD_HASH = "bba1b366a8205a4ccbe8277d46e21497cf1a93d3cd40c996c
 const AUTH_SESSION_KEY = "xhs_auth_session";
 const AUTH_PERM_KEY    = "xhs_auth_perm_v1";
 const GUIDE_KEY = "xhs_guide_seen_v1";
-const TOOL_VERSION = "1.0.28";
+const TOOL_VERSION = "1.0.29";
 const REMOTE_VERSION_URL = "./version.json";
 const VERSION_SEEN_KEY = "xhs_last_version";
 const VERSION_SEEN_KEY_OLD = "xhs_seen_version_v1";
@@ -4388,7 +4388,10 @@ App.histRecord = function(s){
     }).filter(Boolean);
     if(!pages.length) return;
     const rec={uid:s.uid, ts:Date.now(), name:s.name||"未命名方案", pages, images};
-    App.idbHistPut(rec).then(()=>App.idbHistPrune()).catch(()=>{});
+    // 保存失败不再静默：本地数据库不可用（如隐私模式）时用户至少要知道历史为什么是空的（每会话只提示一次）
+    App.idbHistPut(rec).then(()=>App.idbHistPrune()).catch(()=>{
+      if(!App._histSaveWarned){ App._histSaveWarned=true; App.toast("历史记录保存失败：当前浏览器本地存储不可用（隐私模式下历史功能不可用）"); }
+    });
   }catch(e){ App.reportError("hist-record",e); }
 };
 App._histCache=[];
@@ -4714,6 +4717,8 @@ App.manageGenerateSelected = App.guardAsync("batchGenerate", async function(){
   App.showJob("批量生成中…");
   try{
     await App.generateSetsAsync(idxs, (cur,total)=>App.updateJob(cur,total));
+    // 批量生成与单套生成同等对待：每套成功后记入历史（否则历史页看不到批量生成的方案）
+    idxs.forEach(si=>App.histRecord(App.state.sets[si]));
     App.renderSets(); App.saveSession();
     App.toast(`已批量生成 ${idxs.length} 个方案`);
   }finally{ App.hideJob(); }
@@ -6607,6 +6612,8 @@ App.collectExportFiles = async function(onProgress){
       document.getElementById("jobTitle").textContent="正在补生成改动过的方案…";
       App.updateJob(cur,total);
     });
+    // 补生成说明方案内容已变化：同步刷新历史快照，保证历史与实际导出内容一致
+    regenIdxs.forEach(idx=>App.histRecord(App.state.sets[idx]));
     App.renderSets();
   }
 
