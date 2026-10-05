@@ -280,7 +280,7 @@ details.man summary{cursor:pointer;font-weight:700;color:var(--ink2)}
 
       <div class="mode-box">
         <div class="t"><input type="checkbox" id="modeDir"> 💾 自动写入工具文件夹 <span class="pill info">本地双击打开 index.html 用的选这个</span></div>
-        <div class="d">写入后本地立即生效：重新打开 index.html 即用新口令/新模板，不用再手动替换文件。</div>
+        <div class="d">写入后本地立即生效：重新打开 index.html 即用新口令/新模板，不用再手动替换文件。已验证过的设备刷新后直接进入（不受换口令影响），新口令仅对新设备/首次验证生效。</div>
         <div class="row" style="margin-top:8px">
           <button class="btn ghost" onclick="P.pickDir()">📂 <span id="dirBtnText">选择工具文件夹</span></button>
           <span class="small" id="dirStatus">未选择</span>
@@ -322,7 +322,7 @@ details.man summary{cursor:pointer;font-weight:700;color:var(--ink2)}
     <div class="card">
       <h2><span class="num">5</span>发布后会发生什么</h2>
       <ol style="padding-left:20px;font-size:13px;color:var(--ink2);margin:6px 0">
-        <li><b>本地使用者</b>：文件已自动写回工具文件夹，重新打开 index.html，旧口令被拒绝、新口令能进，即成功。</li>
+        <li><b>本地使用者</b>：文件已自动写回工具文件夹，重新打开 index.html，之前验证过的设备直接进入（不被打断）；新设备/清除过浏览器的设备输入新口令能进、旧口令被拒绝，即成功。</li>
         <li><b>GitHub Pages 在线版</b>：双击生成的 <code>_git_push.bat</code> → 看到「[OK] 已推送」→ 等约 1 分钟 → 用无痕窗口打开买家网址验证。</li>
         <li><b>买家端</b>：升级版本号时，下次打开工具顶部出现「工具已更新 v新版本」提示条，点「立即刷新」自选时机升级；若本次带了新预设模板，刷新后预设模板库自动替换为新模板（自定义模板保留）。若未升级版本号（仅换口令/模板），买家端不弹任何提示，新内容随下次工具改版一并上线。</li>
       </ol>
@@ -793,6 +793,21 @@ P.buildPackJs = function(pack, reset, ver){
     .replace(/</g,"\\u003c").replace(/\u2028/g,"\\u2028").replace(/\u2029/g,"\\u2029");
 };
 
+// 维护 index.html 的历史口令哈希表：换口令时把旧哈希挪进 PREV_PASSWORD_HASHES（最多保留 12 条），
+// 已验证设备刷新后凭旧哈希照常进入，不被打断；新设备仍需当前口令
+P.PREV_RE = /const PREV_PASSWORD_HASHES\s*=\s*\[[^\]]*\]/;
+P.updatePrevHashes = function(src, oldHash){
+  let list=[];
+  const m=src.match(P.PREV_RE);
+  if(m){ try{ list=JSON.parse(m[0].slice(m[0].indexOf("[")))||[]; }catch(e){ list=[]; } }
+  list=[oldHash, ...list.filter(h=>h&&h!==oldHash)].slice(0,12);
+  const line=`const PREV_PASSWORD_HASHES = ${JSON.stringify(list)};`;
+  if(m) return src.replace(P.PREV_RE, ()=>line);
+  const anchor=src.match(RE_USER);
+  if(!anchor) return src; // 找不到锚点则跳过归档（不阻断发布）
+  return src.slice(0,anchor.index+anchor[0].length)+"\n"+line+src.slice(anchor.index+anchor[0].length);
+};
+
 // ---------- 一键发布 ----------
 P.apply = async function(){
   if(!P.state.src){ P.toast("请先连接 index.html"); return; }
@@ -837,8 +852,9 @@ P.apply = async function(){
 
     // 1. 口令
     if(nu){
+      const oldHash=(src.match(HASH_USER)||[])[1]||"";
       src=P.patchHash(src, RE_USER, OCC_USER, `const CURRENT_PASSWORD_HASH = "${await P.sha256(nu)}"; // 默认口令：${nu}`);
-      P.log("用户口令哈希已替换 ✓","ok");
+      if(oldHash){ src=P.updatePrevHashes(src, oldHash); P.log("历史口令已归档（已验证设备刷新后不被打断）✓","ok"); }
     }
     if(na){
       const h=await P.sha256(na);
@@ -970,7 +986,7 @@ P.apply = async function(){
 
     // 结果面板
     let steps="";
-    if(wantGh) steps+=`<li>双击工具文件夹里的 <b>_git_push.bat</b>（需本机已装 Git、文件夹是 clone 的仓库；无需 Token）。</li><li>看到「[OK] 已推送」后等约 1 分钟，用无痕窗口打开买家网址验证：旧口令进不去、新口令能进。</li>`;
+    if(wantGh) steps+=`<li>双击工具文件夹里的 <b>_git_push.bat</b>（需本机已装 Git、文件夹是 clone 的仓库；无需 Token）。</li><li>看到「[OK] 已推送」后等约 1 分钟，用无痕窗口打开买家网址验证：输入旧口令进不去、新口令能进（无痕窗口视为新设备；已验证过的买家设备不受影响、照常使用）。</li>`;
     if(dirWritten) steps+=`<li>本地已生效：重新打开 index.html 即用新口令${usePack?"与新模板库":""}。</li>`;
     if(bump){
       steps+=`<li>买家端下次打开时顶部出现「工具已更新 v${P.esc(newVer)}」提示条，点「立即刷新」自选时机升级；刷新后${usePack?"预设模板库已自动替换为新模板":"进入新版工具"}。</li>`;
