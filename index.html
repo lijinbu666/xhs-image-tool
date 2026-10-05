@@ -965,7 +965,7 @@ const CURRENT_PASSWORD_HASH = "bba1b366a8205a4ccbe8277d46e21497cf1a93d3cd40c996c
 const AUTH_SESSION_KEY = "xhs_auth_session";
 const AUTH_PERM_KEY    = "xhs_auth_perm_v1";
 const GUIDE_KEY = "xhs_guide_seen_v1";
-const TOOL_VERSION = "1.0.31";
+const TOOL_VERSION = "1.0.32";
 const REMOTE_VERSION_URL = "./version.json";
 const VERSION_SEEN_KEY = "xhs_last_version";
 const VERSION_SEEN_KEY_OLD = "xhs_seen_version_v1";
@@ -4021,6 +4021,7 @@ App.cardMenuHTML = function(t){
       : (adm
          ? `<a onclick="App.openEditor('${t.id}')">编辑模板</a>
             <a onclick="App.renamePreset('${t.id}')">重命名</a>
+            <a onclick="App.duplicatePreset('${t.id}')">复制为预设</a>
             <a onclick="App.copyAndEdit('${t.id}')">复制并编辑</a>`
          : `<a onclick="App.copyAndEdit('${t.id}')">复制并编辑</a>`)}
     ${(t.is_custom || adm) ? `<a class="danger" onclick="App.deleteTemplate('${t.id}')">删除</a>` : ""}`;
@@ -4104,6 +4105,37 @@ App.copyTemplate = function(id){
   return copy.id;
 };
 App.copyAndEdit = id => App.openEditor(App.copyTemplate(id));
+// 管理模式：复制预设模板为「新的预设」（派生新模板种类用）——副本进预设区、默认下架态，
+// 打开编辑器改完保存仍写回预设区（同新 id），原模板不受影响；上架后才随部署发布给买家
+App.duplicatePreset = function(id){
+  if(!(App.isAdmin&&App.isAdmin())) return App.toast("复制预设为开发者功能");
+  const t=App.tplById(id); if(!t) return App.toast("模板不存在");
+  const copy=JSON.parse(JSON.stringify(t));
+  copy.id=App.uid(); copy.is_custom=false; copy.source="preset";
+  // 与 copyTemplate 相同的副本命名规则：「X 副本」「X 副本2」…
+  const m=t.name.match(/^(.*?) 副本(\d*)$/);
+  if(m){
+    const esc=m[1].replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+    const re=new RegExp("^"+esc+" 副本(\\d*)$");
+    let maxN=1;
+    App.state.templates.forEach(x=>{ const mm=x.name.match(re); if(mm) maxN=Math.max(maxN, mm[1]?parseInt(mm[1],10):1); });
+    copy.name=m[1]+" 副本"+(maxN+1);
+  }else{
+    copy.name=t.name+" 副本";
+  }
+  copy.phs.forEach(p=>p.uid=App.uid());
+  const list=(App.state.presetTemplates||[]).slice();
+  if(!list.some(x=>x.id===copy.id)) list.push(copy);
+  try{ App.savePresetTemplates(list); }
+  catch(e){ return App.toast("复制失败：浏览器存储空间不足，请清理后重试"); }
+  App.loadTemplates();
+  App.state.tplMeta.shelf=App.state.tplMeta.shelf||{};
+  App.state.tplMeta.shelf[copy.id]=false;   // 副本默认下架：改好并上架后才进发布包
+  App.state.tplMeta.order.push(copy.id); App.saveTplMeta();
+  App.renderTemplates(); App.closeAllCardMenus();
+  App.toast("已复制为新预设（下架态），正在打开编辑器");
+  App.openEditor(copy.id);
+};
 // 管理模式：重命名预设模板（写本机覆盖版，随下次部署发布给买家）
 App.renamePreset = function(id){
   const t=App.tplById(id); if(!t) return;
