@@ -962,13 +962,10 @@ body.is-admin #btnTplSel{display:inline-block}
 // 换每月口令：把新口令的 sha256 替换下面哈希即可。
 // 控制台执行：crypto.subtle.digest('SHA-256',new TextEncoder().encode('新口令')).then(b=>console.log([...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')))
 const CURRENT_PASSWORD_HASH = "bba1b366a8205a4ccbe8277d46e21497cf1a93d3cd40c996ceebdca7e570c2a4"; // 默认口令：krauic6bdacp
-// 历史口令哈希（发布台换口令时自动归档）：已验证设备凭旧哈希保持永久有效，
-// 换口令后刷新不再被打断要求重新输入；历史哈希仅用于校验已存凭证，不能通过验证门获得新凭证
-const PREV_PASSWORD_HASHES = [];
 const AUTH_SESSION_KEY = "xhs_auth_session";
 const AUTH_PERM_KEY    = "xhs_auth_perm_v1";
 const GUIDE_KEY = "xhs_guide_seen_v1";
-const TOOL_VERSION = "1.0.30";
+const TOOL_VERSION = "1.0.31";
 const REMOTE_VERSION_URL = "./version.json";
 const VERSION_SEEN_KEY = "xhs_last_version";
 const VERSION_SEEN_KEY_OLD = "xhs_seen_version_v1";
@@ -1389,12 +1386,10 @@ App.verify = async function(btn){
 };
 App.isAuthed = function(){
   try{
-    // 当前口令或历史口令的凭证均有效（换口令不打断已验证设备）；新验证仍只认当前口令（见 App.verify）
-    const ok = h => !!h && (h===CURRENT_PASSWORD_HASH || PREV_PASSWORD_HASHES.includes(h));
     const s = sessionStorage.getItem(AUTH_SESSION_KEY);
-    if(s && ok(s)) return true;
+    if(s && s === CURRENT_PASSWORD_HASH) return true;
     const p = localStorage.getItem(AUTH_PERM_KEY);
-    if(p && ok(p)){ sessionStorage.setItem(AUTH_SESSION_KEY, p); return true; }
+    if(p && p === CURRENT_PASSWORD_HASH){ sessionStorage.setItem(AUTH_SESSION_KEY, p); return true; }
   }catch(e){}
   return false;
 };

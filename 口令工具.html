@@ -235,7 +235,7 @@ details.man summary{cursor:pointer;font-weight:700;color:var(--ink2)}
 
       <label>新用户口令（留空＝不换）</label>
       <div class="pwd-input-wrap">
-        <input type="password" id="applyUser" placeholder="留空表示用户口令保持不变" oninput="P.refreshPreview()">
+        <input type="password" id="applyUser" placeholder="留空表示用户口令保持不变" oninput="P.refreshPreview();P.syncBump()">
         <button class="eye" onclick="P.toggleEye('applyUser',this)">👁</button>
       </div>
       <label class="mt">新管理口令（留空＝不换）</label>
@@ -253,7 +253,7 @@ details.man summary{cursor:pointer;font-weight:700;color:var(--ink2)}
       </div>
       <div class="small" style="margin-top:4px">文件来自配图工具管理后台的「📦 导出全部预设模板 JSON」。发布后买家端会在下次打开时<b>整库替换</b>预设模板（自定义模板不受影响）。</div>
 
-      <label class="chk" style="margin-top:10px"><input type="checkbox" id="bumpChk" checked onchange="P.syncBump()"> ⬆️ <span><b>同步升级版本号</b>（改了工具界面/功能才需要；仅换口令或模板时取消勾选 —— 买家端不弹更新提示、不生成 version 文件、无需推送 GitHub，新内容随下次工具改版一并上线）</span></label>
+      <label class="chk" style="margin-top:10px"><input type="checkbox" id="bumpChk" checked onchange="P.syncBump()"> ⬆️ <span><b>同步升级版本号</b>（改了工具界面/功能才需要；仅换口令或模板时取消勾选 —— 买家端不弹更新提示、不生成 version 文件。仅换口令时仍可推送 GitHub：买家正在用的页面不被打断，下次打开工具时才验证新口令）</span></label>
 
       <label class="mt">🗂 发布文件清单（自动组装）</label>
       <div class="files-chips" id="fileChips"></div>
@@ -280,7 +280,7 @@ details.man summary{cursor:pointer;font-weight:700;color:var(--ink2)}
 
       <div class="mode-box">
         <div class="t"><input type="checkbox" id="modeDir"> 💾 自动写入工具文件夹 <span class="pill info">本地双击打开 index.html 用的选这个</span></div>
-        <div class="d">写入后本地立即生效：重新打开 index.html 即用新口令/新模板，不用再手动替换文件。已验证过的设备刷新后直接进入（不受换口令影响），新口令仅对新设备/首次验证生效。</div>
+        <div class="d">写入后本地立即生效：重新打开 index.html 即用新口令/新模板，不用再手动替换文件。</div>
         <div class="row" style="margin-top:8px">
           <button class="btn ghost" onclick="P.pickDir()">📂 <span id="dirBtnText">选择工具文件夹</span></button>
           <span class="small" id="dirStatus">未选择</span>
@@ -322,7 +322,7 @@ details.man summary{cursor:pointer;font-weight:700;color:var(--ink2)}
     <div class="card">
       <h2><span class="num">5</span>发布后会发生什么</h2>
       <ol style="padding-left:20px;font-size:13px;color:var(--ink2);margin:6px 0">
-        <li><b>本地使用者</b>：文件已自动写回工具文件夹，重新打开 index.html，之前验证过的设备直接进入（不被打断）；新设备/清除过浏览器的设备输入新口令能进、旧口令被拒绝，即成功。</li>
+        <li><b>本地使用者</b>：文件已自动写回工具文件夹，重新打开 index.html，旧口令被拒绝、新口令能进，即成功。</li>
         <li><b>GitHub Pages 在线版</b>：双击生成的 <code>_git_push.bat</code> → 看到「[OK] 已推送」→ 等约 1 分钟 → 用无痕窗口打开买家网址验证。</li>
         <li><b>买家端</b>：升级版本号时，下次打开工具顶部出现「工具已更新 v新版本」提示条，点「立即刷新」自选时机升级；若本次带了新预设模板，刷新后预设模板库自动替换为新模板（自定义模板保留）。若未升级版本号（仅换口令/模板），买家端不弹任何提示，新内容随下次工具改版一并上线。</li>
       </ol>
@@ -663,11 +663,13 @@ P.bumpVer = v => {
 // 「升级版本号」开关联动：取消时推送 GitHub 无意义，自动取消并禁用 GitHub 卡
 P.syncBump = function(){
   const bump=$("#bumpChk").checked;
+  const hasPw=!!$("#applyUser").value.trim() || !!$("#applyAdmin").value.trim();
   const gh=$("#modeGh");
-  gh.disabled=!bump;
-  if(!bump) gh.checked=false;
-  $("#ghBox").classList.toggle("off",!bump);
-  $("#ghSilent").classList.toggle("hidden",bump);
+  // 仅换口令（不升版本号）也允许推 GitHub：买家正在用的页面不弹更新条、不被打断，新口令在下次打开工具时才验证
+  gh.disabled=!bump && !hasPw;
+  if(!bump && !hasPw) gh.checked=false;
+  $("#ghBox").classList.toggle("off",!bump && !hasPw);
+  $("#ghSilent").classList.toggle("hidden",bump || hasPw);
   if($("#previewLines")) P.refreshPreview();
 };
 P.modeDesc = function(){
@@ -793,21 +795,6 @@ P.buildPackJs = function(pack, reset, ver){
     .replace(/</g,"\\u003c").replace(/\u2028/g,"\\u2028").replace(/\u2029/g,"\\u2029");
 };
 
-// 维护 index.html 的历史口令哈希表：换口令时把旧哈希挪进 PREV_PASSWORD_HASHES（最多保留 12 条），
-// 已验证设备刷新后凭旧哈希照常进入，不被打断；新设备仍需当前口令
-P.PREV_RE = /const PREV_PASSWORD_HASHES\s*=\s*\[[^\]]*\]/;
-P.updatePrevHashes = function(src, oldHash){
-  let list=[];
-  const m=src.match(P.PREV_RE);
-  if(m){ try{ list=JSON.parse(m[0].slice(m[0].indexOf("[")))||[]; }catch(e){ list=[]; } }
-  list=[oldHash, ...list.filter(h=>h&&h!==oldHash)].slice(0,12);
-  const line=`const PREV_PASSWORD_HASHES = ${JSON.stringify(list)};`;
-  if(m) return src.replace(P.PREV_RE, ()=>line);
-  const anchor=src.match(RE_USER);
-  if(!anchor) return src; // 找不到锚点则跳过归档（不阻断发布）
-  return src.slice(0,anchor.index+anchor[0].length)+"\n"+line+src.slice(anchor.index+anchor[0].length);
-};
-
 // ---------- 一键发布 ----------
 P.apply = async function(){
   if(!P.state.src){ P.toast("请先连接 index.html"); return; }
@@ -836,9 +823,10 @@ P.apply = async function(){
   if(usePack) tasks.push(`新预设模板 ${okN} 套（买家端整库更新）`);
   tasks.push(bump
     ? `版本号 v${curVer} → v${newVer}`
-    : `版本号保持 v${curVer} 不变（静默更新：不生成 version 文件、不推送 GitHub）`);
+    : `版本号保持 v${curVer} 不变（静默更新：不生成 version 文件${(nu&&nu.trim())||(na&&na.trim())?"；换口令仍可推送 GitHub，买家下次打开时才验证新口令":""}）`);
   const modes=[];
-  const wantDir=$("#modeDir").checked, wantGh=bump&&$("#modeGh").checked, wantZip=$("#modeZip").checked;
+  const wantDir=$("#modeDir").checked, hasPw=!!(nu&&nu.trim())||!!(na&&na.trim()),
+        wantGh=$("#modeGh").checked&&(bump||hasPw), wantZip=$("#modeZip").checked;
   if(wantDir) modes.push("写入文件夹");
   if(wantGh) modes.push("Git一键推送脚本");
   if(wantZip) modes.push("ZIP");
@@ -852,9 +840,8 @@ P.apply = async function(){
 
     // 1. 口令
     if(nu){
-      const oldHash=(src.match(HASH_USER)||[])[1]||"";
       src=P.patchHash(src, RE_USER, OCC_USER, `const CURRENT_PASSWORD_HASH = "${await P.sha256(nu)}"; // 默认口令：${nu}`);
-      if(oldHash){ src=P.updatePrevHashes(src, oldHash); P.log("历史口令已归档（已验证设备刷新后不被打断）✓","ok"); }
+      P.log("用户口令哈希已替换 ✓","ok");
     }
     if(na){
       const h=await P.sha256(na);
@@ -971,7 +958,7 @@ P.apply = async function(){
     if(usePack) items.push({t:"预设模板", v:`${P.state.packName}（${okN} 套，换代 ${newReset}）`});
     items.push(bump
       ? {t:"版本号", v:`v${curVer} → v${newVer}`}
-      : {t:"版本号", v:`v${curVer} 保持不变（未推送）`});
+      : {t:"版本号", v:`v${curVer} 保持不变${wantGh?"（已推送 GitHub）":"（未推送）"}`});
     P.addHistory(items, bump?`v${newVer}`:`v${curVer}·不变`, modes.join("+"));
 
     $("#curUserShort").textContent=P.short(nu?await P.sha256(nu):P.state.oldUser);
@@ -986,12 +973,14 @@ P.apply = async function(){
 
     // 结果面板
     let steps="";
-    if(wantGh) steps+=`<li>双击工具文件夹里的 <b>_git_push.bat</b>（需本机已装 Git、文件夹是 clone 的仓库；无需 Token）。</li><li>看到「[OK] 已推送」后等约 1 分钟，用无痕窗口打开买家网址验证：输入旧口令进不去、新口令能进（无痕窗口视为新设备；已验证过的买家设备不受影响、照常使用）。</li>`;
+    if(wantGh) steps+=`<li>双击工具文件夹里的 <b>_git_push.bat</b>（需本机已装 Git、文件夹是 clone 的仓库；无需 Token）。</li><li>看到「[OK] 已推送」后等约 1 分钟，用无痕窗口打开买家网址验证：旧口令进不去、新口令能进。已验证过的买家不受打扰：正在用的页面照常用，下次打开工具时才要求输入新口令。</li>`;
     if(dirWritten) steps+=`<li>本地已生效：重新打开 index.html 即用新口令${usePack?"与新模板库":""}。</li>`;
     if(bump){
       steps+=`<li>买家端下次打开时顶部出现「工具已更新 v${P.esc(newVer)}」提示条，点「立即刷新」自选时机升级；刷新后${usePack?"预设模板库已自动替换为新模板":"进入新版工具"}。</li>`;
     }else{
-      steps+=`<li>本次<b>未升级版本号、也未推送 GitHub</b>：买家端不会出现更新提示。新口令/模板已写入本地文件${wantZip?"和 ZIP 更新包":""}，下次工具改版发布时会一并上线。</li>`;
+      steps+= wantGh
+        ?`<li>本次<b>仅换口令、未升级版本号</b>：买家正在使用的页面<b>不会弹任何提示、不被打断</b>，照常用到本次结束；<b>下次打开工具时</b>才要求输入新口令（旧口令进不去）。推送 GitHub 后新口令即随新文件上线。</li>`
+        :`<li>本次<b>未升级版本号、也未推送 GitHub</b>：买家端不会出现更新提示。新口令/模板已写入本地文件${wantZip?"和 ZIP 更新包":""}，下次工具改版发布时会一并上线。</li>`;
     }
     $("#resultBox").innerHTML=`<b>✅ ${bump?`发布完成（v${P.esc(newVer)}）`:`口令/模板更新已生成（版本 v${P.esc(curVer)} 不变）`}</b><ol>${steps}</ol>`;
     $("#resultBox").classList.add("show");
