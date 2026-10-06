@@ -234,6 +234,7 @@ details.man summary{cursor:pointer;font-weight:700;color:var(--ink2)}
       <p class="hint">可以任选：换口令、带上新预设模板（买家端预设模板库自动更新）。版本号默认自动 +1（买家端顶部出现更新提示条，自选时机刷新）；<b>如果这次只换口令或模板、工具本身没改，可取消下方「升级版本号」：不升版、不生成版本文件、也不需要推送 GitHub</b>。</p>
 
       <label>新用户口令（留空＝不换）</label>
+      <div class="small" id="gatePausedNote" style="display:none;color:#92400e;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:8px 10px;margin-top:6px">⚠ 工具当前已<b>暂停口令验证</b>（AUTH_GATE_ENABLED=false）：买家打开工具免口令直接进入。此处换口令会把新哈希写入文件备用，<b>恢复验证后</b>才要求输入。</div>
       <div class="pwd-input-wrap">
         <input type="password" id="applyUser" placeholder="留空表示用户口令保持不变" oninput="P.refreshPreview();P.syncBump()">
         <button class="eye" onclick="P.toggleEye('applyUser',this)">👁</button>
@@ -402,6 +403,9 @@ P.ingest = function(src, name, from){
   P.state.src=src; P.state.srcName=name; P.state.srcFrom=from;
   P.state.oldUser = mu ? mu[1] : "";
   P.state.oldAdmin = ma ? ma[1] : "";
+  // 口令验证暂停检测：index.html 里 AUTH_GATE_ENABLED=false 时买家免口令进入，换口令仅恢复后生效
+  P.state.gatePaused = /const AUTH_GATE_ENABLED\s*=\s*false/.test(src);
+  const gp=$("#gatePausedNote"); if(gp) gp.style.display=P.state.gatePaused?"block":"none";
   P.state.files["index.html"] = {bytes:enc.encode(src), text:src};
   $("#unlockArea").classList.remove("hidden");
   setTimeout(()=>$("#unlockPwd").focus(),50);
@@ -973,7 +977,10 @@ P.apply = async function(){
 
     // 结果面板
     let steps="";
-    if(wantGh) steps+=`<li>双击工具文件夹里的 <b>_git_push.bat</b>（需本机已装 Git、文件夹是 clone 的仓库；无需 Token）。</li><li>看到「[OK] 已推送」后等约 1 分钟，用无痕窗口打开买家网址验证：旧口令进不去、新口令能进。已验证过的买家不受打扰：正在用的页面照常用，下次打开工具时才要求输入新口令。</li>`;
+    if(P.state.gatePaused) steps+=`<li>⚠ 当前工具已<b>暂停口令验证</b>：买家打开工具<b>免口令直接进入</b>。本次新口令已写入文件备用，<b>恢复验证（AUTH_GATE_ENABLED 改回 true 并重新发布）后</b>才要求输入。</li>`;
+    if(wantGh) steps+= P.state.gatePaused
+      ?`<li>双击工具文件夹里的 <b>_git_push.bat</b> 推送 GitHub。验证：打开买家网址确认<b>免口令直接进入</b>（暂停验证期间口令不拦截）。</li>`
+      :`<li>双击工具文件夹里的 <b>_git_push.bat</b>（需本机已装 Git、文件夹是 clone 的仓库；无需 Token）。</li><li>看到「[OK] 已推送」后等约 1 分钟，用无痕窗口打开买家网址验证：旧口令进不去、新口令能进。已验证过的买家不受打扰：正在用的页面照常用，下次打开工具时才要求输入新口令。</li>`;
     if(dirWritten) steps+=`<li>本地已生效：重新打开 index.html 即用新口令${usePack?"与新模板库":""}。</li>`;
     if(bump){
       steps+=`<li>买家端下次打开时顶部出现「工具已更新 v${P.esc(newVer)}」提示条，点「立即刷新」自选时机升级；刷新后${usePack?"预设模板库已自动替换为新模板":"进入新版工具"}。</li>`;
