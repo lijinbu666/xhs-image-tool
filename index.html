@@ -968,7 +968,7 @@ const AUTH_GATE_ENABLED = false;
 const AUTH_SESSION_KEY = "xhs_auth_session";
 const AUTH_PERM_KEY    = "xhs_auth_perm_v1";
 const GUIDE_KEY = "xhs_guide_seen_v1";
-const TOOL_VERSION = "1.0.33";
+const TOOL_VERSION = "1.0.34";
 const REMOTE_VERSION_URL = "./version.json";
 const VERSION_SEEN_KEY = "xhs_last_version";
 const VERSION_SEEN_KEY_OLD = "xhs_seen_version_v1";
@@ -1183,7 +1183,8 @@ App.imgDb = function(){
       if(!db.objectStoreNames.contains(App.HIST_STORE)) db.createObjectStore(App.HIST_STORE);
     };
     rq.onsuccess=()=>res(rq.result);
-    rq.onerror=()=>rej(rq.error);
+    rq.onerror=()=>{ App._imgDbP=null; rej(rq.error); };   // 失败不缓存拒绝：修复浏览器设置后无需刷新即可重试
+    rq.onblocked=()=>{ App._imgDbP=null; rej(new Error("本地数据库被其他页面占用")); };
   });
   return App._imgDbP;
 };
@@ -1253,12 +1254,14 @@ App.idbHistPut = async function(rec){
   });
 };
 App.idbHistAll = async function(){
-  if(!App._compat.idb) return [];
-  const db=await App.imgDb();
-  return await new Promise((res,rej)=>{
-    const tx=db.transaction(App.HIST_STORE), rq=tx.objectStore(App.HIST_STORE).getAll();
-    rq.onsuccess=()=>res(rq.result||[]); rq.onerror=()=>rej(rq.error);
-  });
+  if(!App._compat.idb) return null;
+  try{
+    const db=await App.imgDb();
+    return await new Promise((res,rej)=>{
+      const tx=db.transaction(App.HIST_STORE), rq=tx.objectStore(App.HIST_STORE).getAll();
+      rq.onsuccess=()=>res(rq.result||[]); rq.onerror=()=>rej(rq.error);
+    });
+  }catch(e){ App.reportError("hist-all",e); return null; }   // 本地数据库不可用：返回 null，由调用方降级到简版历史
 };
 App.idbHistDelete = async function(uids){
   if(!uids || !uids.length || !App._compat.idb) return;
@@ -1276,6 +1279,16 @@ App.idbHistPrune = async function(){
   await App.idbHistDelete(all.slice(App.HIST_MAX).map(r=>r.uid));
 };
 // 工坊样机大图 → 独立 IDB 存储（不放 localStorage，避免挤爆配额）
+// ---- 0.7c 简版历史（localStorage 兜底）：浏览器限制本地数据库（隐私/无痕模式、部分手机浏览器）时，
+// 历史记录不含原图存 localStorage，恢复时从当前素材库按 uid/哈希回绑原图 ----
+App.HIST_LS_KEY="xhs_hist_ls_v1";
+App.histLsAll=function(){ try{ return JSON.parse(localStorage.getItem(App.HIST_LS_KEY))||[]; }catch(e){ return []; } };
+App.histLsPutAll=function(list){ try{ localStorage.setItem(App.HIST_LS_KEY, JSON.stringify(list)); return true; }catch(e){ return false; } };
+App.histLiteCopy=function(rec){
+  return {uid:rec.uid, ts:rec.ts, name:rec.name, lite:true,
+    pages:JSON.parse(JSON.stringify(rec.pages||[])),
+    images:(rec.images||[]).map(im=>({uid:im.uid,name:im.name||"图片",hash:im.hash||"",main:!!im.main,tail:!!im.tail}))};
+};
 App.idbEdAssetsPut = async function(entries){ // entries: [[uid,dataUrl],...]
   if(!entries || !entries.length || !App._compat.idb) return;
   const db=await App.imgDb();
@@ -4426,7 +4439,15 @@ App.histRecord = function(s){
     const rec={uid:s.uid, ts:Date.now(), name:s.name||"未命名方案", pages, images};
     // 保存失败不再静默：本地数据库不可用（如隐私模式）时用户至少要知道历史为什么是空的（每会话只提示一次）
     App.idbHistPut(rec).then(()=>App.idbHistPrune()).catch(()=>{
-      if(!App._histSaveWarned){ App._histSaveWarned=true; App.toast("历史记录保存失败：当前浏览器本地存储不可用（隐私模式下历史功能不可用）"); }
+      // 本地数据库不可用（隐私/无痕模式、浏览器限制站点数据）：降级存简版历史，不再一律报"历史功能不可用"
+      const list=App.histLsAll().filter(r=>r.uid!==rec.uid); list.push(App.histLiteCopy(rec));
+      list.sort((a,b)=>(b.ts||0)-(a.ts||0)); list.length=Math.min(list.length,App.HIST_MAX);
+      if(App.histLsPutAll(list)){
+        if(!App._histSaveWarned){ App._histSaveWarned=true; App.toast("当前浏览器限制了本地数据库，历史记录以简版保存（不含原图，恢复时从素材库回绑）",3600); }
+      }else if(!App._histSaveWarned){
+        App._histSaveWarned=true;
+        App.toast("历史记录保存失败：浏览器存储被限制（隐私/无痕模式等），请换 Chrome/Edge 普通窗口",4200);
+      }
     });
   }catch(e){ App.reportError("hist-record",e); }
 };
@@ -4438,7 +4459,9 @@ App.histFmtTime = function(ts){
 };
 App.openHist = async function(){
   App.$("#histView").classList.add("show");
-  App._histCache = await App.idbHistAll();
+  const cache=await App.idbHistAll();   // 永不抛错：null=本地数据库不可用 → 降级简版历史
+  App._histLsMode=!cache;
+  App._histCache=(cache||App.histLsAll()).slice();
   App._histCache.sort((a,b)=>(b.ts||0)-(a.ts||0));
   App.histRenderList();
 };
@@ -4446,12 +4469,15 @@ App.closeHist = function(){ App.$("#histView").classList.remove("show"); };
 App.histRenderList = function(){
   App.$("#histBack").style.display="none";
   const host=App.$("#histBody");
-  if(!App._compat.idb){ host.innerHTML='<div class="empty-hint">当前浏览器不支持本地数据库，无法使用历史记录</div>'; return; }
+  // 简版模式横幅：浏览器限制本地数据库时给出明确说明与恢复指引
+  const banner=App._histLsMode
+    ?`<div class="hist-count" style="border-color:#f59e0b;color:#92400e">⚠ 当前浏览器限制了本地数据库（隐私/无痕模式、部分手机浏览器）：历史为<b>简版</b>，不含原图——恢复时图片会从当前素材库按编号自动回绑。用 Chrome/Edge 普通窗口打开可恢复完整历史</div>`
+    :"";
   if(!App._histCache.length){
-    host.innerHTML=`<div class="empty-hint">🕘 还没有历史记录<br><span class="small muted">方案「生成」成功后会自动记入这里（最近 ${App.HIST_MAX} 条）<br>点击详情可查看每页快照，或整体恢复到工作台（连同当时的模板与图片）</span></div>`;
+    host.innerHTML=banner+`<div class="empty-hint">🕘 还没有历史记录<br><span class="small muted">方案「生成」成功后会自动记入这里（最近 ${App.HIST_MAX} 条）<br>点击详情可查看每页快照，或整体恢复到工作台（连同当时的模板与图片）</span></div>`;
     return;
   }
-  host.innerHTML = `<div class="hist-count"><b>共 ${App._histCache.length} 条记录</b>
+  host.innerHTML = banner + `<div class="hist-count"><b>共 ${App._histCache.length} 条记录</b>
     <span class="small muted">最新在前 · 超出 ${App.HIST_MAX} 条自动清理最旧 · 恢复会连同导出时的模板与图片一并还原到工作台末尾</span></div>`
   + App._histCache.map(r=>{
     const tpls=new Set(r.pages.map(p=>p.tplId)).size;
@@ -4464,6 +4490,7 @@ App.histRenderList = function(){
           <span class="hi-chip t">${r.pages.length} 页</span>
           <span class="hi-chip t">${tpls} 套模板</span>
           <span class="hi-chip i">${(r.images||[]).length} 张图</span>
+          ${r.lite?'<span class="hi-chip">简版</span>':""}
         </div>
       </div>
       <div class="hi-ops">
@@ -4481,7 +4508,7 @@ App._histThumb = async function(rec){
   try{
     const p=rec.pages[0]; if(!p||!p.tplSnap) return "";
     const cache={};
-    const im2obj=im=>{ if(!im) return null; if(!cache[im.uid]){ const i=new Image(); i.src=im.dataUrl; cache[im.uid]=i; } return {img:cache[im.uid]}; };
+    const im2obj=im=>{ if(!im||!im.dataUrl) return null; if(!cache[im.uid]){ const i=new Image(); i.src=im.dataUrl; cache[im.uid]=i; } return {img:cache[im.uid]}; };
     const used=[...new Set((p.slots||[]).filter(Boolean))];
     for(const u of used){ const im=(rec.images||[]).find(x=>x.uid===u); if(im&&cache[im.uid]){ try{ await cache[im.uid].decode(); }catch(e){} } }
     const imgs=(p.slots||[]).map(u=>im2obj((rec.images||[]).find(x=>x.uid===u)));
@@ -4526,7 +4553,7 @@ App.histOpenDetail = async function(uid){
 };
 App.histDetailThumbs = async function(rec){
   const cache={};
-  const im2obj=im=>{ if(!im) return null; if(!cache[im.uid]){ const i=new Image(); i.src=im.dataUrl; cache[im.uid]=i; } return {img:cache[im.uid]}; };
+  const im2obj=im=>{ if(!im||!im.dataUrl) return null; if(!cache[im.uid]){ const i=new Image(); i.src=im.dataUrl; cache[im.uid]=i; } return {img:cache[im.uid]}; };
   const used=[...new Set(rec.pages.flatMap(p=>p.slots||[]).filter(Boolean))];
   for(const u of used){ const im=(rec.images||[]).find(x=>x.uid===u); if(im&&cache[im.uid]){ try{ await cache[im.uid].decode(); }catch(e){} } }
   return rec.pages.map(p=>{
@@ -4555,15 +4582,21 @@ App.histRestore = async function(uid){
   try{
     // 1) 图片副本合入素材库（同 uid 已存在则复用，不重复）
     const have=new Set(App.state.images.map(im=>im.uid));
-    const add=[];
+    const add=[]; let missing=0;
     for(const im of (rec.images||[])){
       if(have.has(im.uid)) continue;
-      const i=new Image(); i.src=im.dataUrl;
+      let dataUrl=im.dataUrl||"";
+      if(!dataUrl){   // 简版历史（无原图）：从当前素材库按 uid/哈希回绑
+        const cur=App.state.images.find(x=>x.uid===im.uid||(im.hash&&x.hash===im.hash));
+        if(cur) dataUrl=cur.dataUrl;
+      }
+      if(!dataUrl){ missing++; continue; }
+      const i=new Image(); i.src=dataUrl;
       try{ await i.decode(); }catch(e){}
-      const o={uid:im.uid, name:im.name||"图片", hash:im.hash||"", dataUrl:im.dataUrl, img:i, main:!!im.main, tail:!!im.tail};
+      const o={uid:im.uid, name:im.name||"图片", hash:im.hash||"", dataUrl:dataUrl, img:i, main:!!im.main, tail:!!im.tail};
       App.state.images.push(o); add.push(o);
     }
-    if(add.length) await App.idbImagesPutAll(add);
+    if(add.length) await App.idbImagesPutAll(add).catch(e=>App.reportError("hist-restore-img",e));
     // 2) 模板快照登记（tplById 兜底命中；刷新后由 histTplsLoad 恢复）。
     //    以本条记录的快照为准直接覆盖：即使同 id 模板后来被编辑过，恢复结果仍与本记录导出时完全一致。
     (rec.pages||[]).forEach(p=>{ if(p.tplSnap) App.state.histTpls[p.tplId]=p.tplSnap; });
@@ -4577,12 +4610,13 @@ App.histRestore = async function(uid){
     App.renderImages(); App.renderSets(); App.saveSession();
     App.closeHist();
     App.$("#setCard").scrollIntoView({behavior:"smooth",block:"start"});
-    App.toast(`已把「${s.name}」恢复到工作台末尾（第 ${App.state.sets.length} 套），导出时的图片已一并还原；点「检查」可只替换其中某一张图`, 4200);
+    App.toast(`已把「${s.name}」恢复到工作台末尾（第 ${App.state.sets.length} 套）${missing?`；${missing} 张图素材库中未找到，可补传后在方案里手动绑定`:"，导出时的图片已一并还原"}；点「检查」可只替换其中某一张图`, 4200);
   }catch(e){ App.reportError("hist-restore",e); App.toast("恢复失败，请重试"); }
 };
 App.histDelete = async function(uid){
   if(!confirm("删除这条历史记录？（不影响工作台中的方案）")) return;
-  await App.idbHistDelete([uid]);
+  if(App._histLsMode){ App.histLsPutAll(App.histLsAll().filter(r=>r.uid!==uid)); }
+  else{ try{ await App.idbHistDelete([uid]); }catch(e){ App.reportError("hist-del",e); } }
   App._histCache=App._histCache.filter(r=>r.uid!==uid);
   App.histRenderList(); App.toast("已删除该历史记录");
 };
